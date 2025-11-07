@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const CHAT_HOST = process.env.CHAT_API_URL || process.env.NEXT_PUBLIC_CHAT_API_URL || 'https://f52c8f4e7dfc.ngrok-free.app';
+const CHAT_HOST = process.env.CHAT_API_URL || process.env.NEXT_PUBLIC_CHAT_API_URL || 'https://fc39539f7cb9.ngrok-free.app';
 
 export async function POST(req: Request) {
   try {

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { chatWithCopilot } from "../../lib/api";
 
-const CHAT_ENDPOINT = process.env.NEXT_PUBLIC_CHAT_API_URL || 'https://f52c8f4e7dfc.ngrok-free.app';
+const CHAT_ENDPOINT = process.env.NEXT_PUBLIC_CHAT_API_URL || 'https://fc39539f7cb9.ngrok-free.app';
 
 export function ChatbotPanel() {
 	const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; pending?: boolean; error?: boolean }[]>([
