@@ -2,7 +2,7 @@
 import { TryTab } from "./Sidebar";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { saveLatestUpload, getLatestUpload, deleteLatestUpload } from "../../lib/indexeddb";
-import { analyzeDataset, cleanDataset, getReportUrl, type AnalyzeResponse, type CleanResponse } from "../../lib/api";
+import { analyzeDataset, cleanDataset, detectPII, getReportUrl, type AnalyzeResponse, type CleanResponse, type DetectPIIResponse } from "../../lib/api";
 
 interface CenterPanelProps {
 	tab: TryTab;
@@ -38,6 +38,7 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 	// Analysis results
 	const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResponse | null>(null);
 	const [cleanResult, setCleanResult] = useState<CleanResponse | null>(null);
+	const [piiDetectionResult, setPIIDetectionResult] = useState<DetectPIIResponse | null>(null);
 
 	const reset = () => {
 		setFileMeta(null);
@@ -46,6 +47,7 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 		setProgressLabel("Processing");
 		setTablePreview(null);
 		setError(null);
+		setPIIDetectionResult(null);
 	};
 
 	// Handle API calls
@@ -66,6 +68,27 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 			onAnalyze?.(); // Navigate to bias-analysis tab
 		} catch (err: any) {
 			setError(err.message || "Analysis failed");
+		} finally {
+			setIsProcessing(false);
+		}
+	};
+
+	const handleDetectPII = async () => {
+		if (!uploadedFile) {
+			setError("No file uploaded");
+			return;
+		}
+		
+		setIsProcessing(true);
+		setError(null);
+		setProgressLabel("Detecting PII...");
+		
+		try {
+			const result = await detectPII(uploadedFile);
+			setPIIDetectionResult(result);
+			setProgressLabel("PII detection complete!");
+		} catch (err: any) {
+			setError(err.message || "PII detection failed");
 		} finally {
 			setIsProcessing(false);
 		}
@@ -380,6 +403,18 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 													</div>
 												)}
 												
+												{piiDetectionResult && (
+													<div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+														🔍 PII Detection complete! Found {piiDetectionResult.summary.risky_columns_found} risky columns in {piiDetectionResult.file_type.toUpperCase()} file.
+														<div className="mt-1 text-xs">
+															<span className="font-semibold text-red-700">{piiDetectionResult.summary.high_risk_count} HIGH</span> • 
+															<span className="font-semibold text-orange-600 ml-1">{piiDetectionResult.summary.medium_risk_count} MEDIUM</span> • 
+															<span className="font-semibold text-yellow-600 ml-1">{piiDetectionResult.summary.low_risk_count} LOW</span>
+														</div>
+														<p className="mt-2 text-xs">Review detected risks in the "Bias & Risk Mitigation" tab to choose anonymization strategies.</p>
+													</div>
+												)}
+												
 												{analyzeResult && (
 													<div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
 														✅ Analysis complete! View results in tabs.
@@ -426,6 +461,7 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 																setLoadedFromCache(false);
 																setAnalyzeResult(null);
 																setCleanResult(null);
+																setPIIDetectionResult(null);
 															}}
 														className="text-xs rounded-md border px-3 py-1.5 hover:bg-slate-50"
 													>
@@ -433,11 +469,11 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 													</button>
 													<button
 														type="button"
-														onClick={handleClean}
+														onClick={handleDetectPII}
 														disabled={isProcessing}
-														className="text-xs rounded-md bg-green-600 text-white px-3 py-1.5 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+														className="text-xs rounded-md bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
 													>
-														{isProcessing ? "Processing..." : "Clean (PII)"}
+														{isProcessing ? "Processing..." : "🔍 Detect PII"}
 													</button>
 													<button
 														type="button"
@@ -445,7 +481,7 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 														disabled={isProcessing}
 														className="text-xs rounded-md bg-brand-600 text-white px-3 py-1.5 hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
 													>
-														{isProcessing ? "Processing..." : "Analyze"}
+														{isProcessing ? "Processing..." : "⚡ Analyze"}
 													</button>
 												</div>
 								</div>
@@ -1100,20 +1136,190 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 				);
 			case "bias-risk-mitigation":
 				return (
-					<div className="space-y-4">
-						<h2 className="text-xl font-semibold">Mitigation Suggestions</h2>
-						{analyzeResult && analyzeResult.recommendations.length > 0 ? (
-							<div className="space-y-2">
-								{analyzeResult.recommendations.map((rec, i) => (
-									<div key={i} className="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
-										{rec}
+					<div className="space-y-6">
+						<div>
+							<h2 className="text-2xl font-bold mb-2">PII Detection & Anonymization Strategy</h2>
+							<p className="text-sm text-slate-600">Review detected risky features and choose how to anonymize them</p>
+						</div>
+						
+						{piiDetectionResult ? (
+							<div className="space-y-6">
+								{/* File Info Banner */}
+								<div className="p-3 bg-slate-100 border border-slate-300 rounded-lg text-sm">
+									<div className="flex items-center gap-3">
+										<span className="font-semibold text-slate-700">File:</span>
+										<code className="px-2 py-1 bg-white rounded border border-slate-200">{piiDetectionResult.filename}</code>
+										<span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded">
+											{piiDetectionResult.file_type.toUpperCase()}
+										</span>
+										<span className="text-slate-600">
+											{piiDetectionResult.dataset_info.rows} rows × {piiDetectionResult.dataset_info.columns} columns
+										</span>
 									</div>
-								))}
+								</div>
+
+								{/* Summary Card */}
+								<div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+									<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+										<div>
+											<div className="text-xs font-semibold text-blue-700 mb-1">TOTAL COLUMNS SCANNED</div>
+											<div className="text-3xl font-bold text-blue-900">{piiDetectionResult.summary.total_columns_scanned}</div>
+										</div>
+										<div>
+											<div className="text-xs font-semibold text-red-700 mb-1">HIGH RISK</div>
+											<div className="text-3xl font-bold text-red-900">{piiDetectionResult.summary.high_risk_count}</div>
+											<div className="text-xs text-slate-600">Must remove</div>
+										</div>
+										<div>
+											<div className="text-xs font-semibold text-orange-700 mb-1">MEDIUM RISK</div>
+											<div className="text-3xl font-bold text-orange-900">{piiDetectionResult.summary.medium_risk_count}</div>
+											<div className="text-xs text-slate-600">Hash recommended</div>
+										</div>
+										<div>
+											<div className="text-xs font-semibold text-yellow-700 mb-1">LOW RISK</div>
+											<div className="text-3xl font-bold text-yellow-900">{piiDetectionResult.summary.low_risk_count}</div>
+											<div className="text-xs text-slate-600">Mask/generalize</div>
+										</div>
+									</div>
+									<div className="mt-4 p-3 bg-white/70 rounded-lg text-sm text-slate-700">
+										{piiDetectionResult.message}
+									</div>
+								</div>
+
+								{/* Risky Features List */}
+								<div className="space-y-3">
+									{piiDetectionResult.risky_features.map((feature, idx) => {
+										const riskColor = 
+											feature.risk_level === 'HIGH' ? 'red' :
+											feature.risk_level === 'MEDIUM' ? 'orange' :
+											feature.risk_level === 'LOW' ? 'yellow' : 'gray';
+										
+										const bgColor = 
+											feature.risk_level === 'HIGH' ? 'bg-red-50 border-red-300' :
+											feature.risk_level === 'MEDIUM' ? 'bg-orange-50 border-orange-300' :
+											feature.risk_level === 'LOW' ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-300';
+										
+										return (
+											<div key={idx} className={`p-5 rounded-xl border-2 ${bgColor}`}>
+												{/* Header */}
+												<div className="flex items-start justify-between mb-3">
+													<div className="flex-1">
+														<div className="flex items-center gap-3 mb-2">
+															<span className={`px-3 py-1 bg-${riskColor}-600 text-white text-xs font-bold rounded-full`}>
+																{feature.risk_level} RISK
+															</span>
+															<span className="font-mono font-bold text-lg text-slate-800">{feature.column}</span>
+														</div>
+														<div className="text-sm text-slate-700">
+															<span className="font-semibold">Detected:</span> {feature.entity_type}
+															<span className="mx-2">•</span>
+															<span className="font-semibold">Confidence:</span> {(feature.confidence * 100).toFixed(1)}%
+															<span className="mx-2">•</span>
+															<span className="font-semibold">Occurrences:</span> {feature.detection_count}
+														</div>
+													</div>
+												</div>
+
+												{/* Explanation */}
+												<div className="p-4 bg-white rounded-lg mb-4">
+													<div className="text-xs font-semibold text-slate-600 mb-2">WHY IS THIS RISKY?</div>
+													<p className="text-sm text-slate-700 leading-relaxed">{feature.explanation}</p>
+													<div className="mt-3 text-xs text-slate-600">
+														<strong>GDPR Reference:</strong> {feature.gdpr_article}
+													</div>
+												</div>
+
+												{/* Sample Values */}
+												{feature.sample_values.length > 0 && (
+													<div className="p-4 bg-white rounded-lg mb-4">
+														<div className="text-xs font-semibold text-slate-600 mb-2">SAMPLE VALUES</div>
+														<div className="flex gap-2 flex-wrap">
+															{feature.sample_values.map((val, i) => (
+																<code key={i} className="px-2 py-1 bg-slate-100 rounded text-xs text-slate-800 border border-slate-200">
+																	{val}
+																</code>
+															))}
+														</div>
+													</div>
+												)}
+
+												{/* Recommended Strategy */}
+												<div className="p-4 bg-white rounded-lg border-2 border-green-300">
+													<div className="flex items-start gap-3">
+														<div className="flex-1">
+															<div className="text-xs font-semibold text-green-700 mb-1">✓ RECOMMENDED STRATEGY</div>
+															<div className="font-bold text-lg text-slate-900">{feature.recommended_strategy}</div>
+															<div className="text-sm text-slate-700 mt-1">{feature.strategy_description}</div>
+															<div className="mt-2 flex gap-4 text-xs text-slate-600">
+																<div>
+																	<strong>Reversible:</strong> {feature.reversible ? 'Yes' : 'No'}
+																</div>
+																<div>
+																	<strong>Use Cases:</strong> {feature.use_cases.join(', ')}
+																</div>
+															</div>
+														</div>
+														<button
+															className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-500"
+															onClick={() => alert(`Apply ${feature.recommended_strategy} to ${feature.column}`)}
+														>
+															Apply
+														</button>
+													</div>
+												</div>
+
+												{/* Alternative Strategies */}
+												<details className="mt-3">
+													<summary className="text-xs font-semibold text-slate-600 cursor-pointer hover:text-slate-800">
+														View Alternative Strategies
+													</summary>
+													<div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+														{Object.entries(piiDetectionResult.available_strategies)
+															.filter(([strategy]) => strategy !== feature.recommended_strategy)
+															.map(([strategy, details]: [string, any]) => (
+																<div key={strategy} className="p-3 bg-white rounded border border-slate-200 hover:border-slate-400">
+																	<div className="font-semibold text-sm text-slate-800">{strategy}</div>
+																	<div className="text-xs text-slate-600 mt-1">{details.description}</div>
+																	<div className="mt-2 flex items-center justify-between">
+																		<span className={`px-2 py-0.5 text-xs rounded ${
+																			details.risk_level === 'HIGH' ? 'bg-red-100 text-red-800' :
+																			details.risk_level === 'MEDIUM' ? 'bg-orange-100 text-orange-800' :
+																			'bg-yellow-100 text-yellow-800'
+																		}`}>
+																			{details.risk_level} Risk
+																		</span>
+																		<button
+																			className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-500"
+																			onClick={() => alert(`Apply ${strategy} to ${feature.column}`)}
+																		>
+																			Use This
+																		</button>
+																	</div>
+																</div>
+															))}
+													</div>
+												</details>
+											</div>
+										);
+									})}
+								</div>
+
+								{/* Apply All Button */}
+								<div className="sticky bottom-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
+									<button
+										className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500 shadow-lg"
+										onClick={() => alert('Apply all recommended strategies and clean dataset')}
+									>
+										✓ Apply All Recommended Strategies & Clean Dataset
+									</button>
+								</div>
 							</div>
 						) : (
-							<p className="text-sm text-slate-600">
-								Recommendations will appear here after analysis.
-							</p>
+							<div className="text-center py-12">
+								<div className="text-6xl mb-4">🔍</div>
+								<p className="text-slate-600 mb-2">No PII detection results yet</p>
+								<p className="text-sm text-slate-500">Upload a dataset and click "🔍 Detect PII" to scan for risky features</p>
+							</div>
 						)}
 					</div>
 				);

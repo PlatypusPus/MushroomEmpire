@@ -74,6 +74,46 @@ export interface CleanResponse {
   timestamp: string;
 }
 
+export interface DetectPIIResponse {
+  status: string;
+  filename: string;
+  file_type: 'csv' | 'json' | 'text';
+  dataset_info: {
+    rows: number;
+    columns: number;
+    column_names: string[];
+  };
+  summary: {
+    total_columns_scanned: number;
+    risky_columns_found: number;
+    high_risk_count: number;
+    medium_risk_count: number;
+    low_risk_count: number;
+    unique_entity_types: number;
+  };
+  risky_features: Array<{
+    column: string;
+    entity_type: string;
+    risk_level: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+    confidence: number;
+    detection_count: number;
+    recommended_strategy: string;
+    strategy_description: string;
+    reversible: boolean;
+    use_cases: string[];
+    gdpr_article: string;
+    sample_values: string[];
+    explanation: string;
+  }>;
+  available_strategies: Record<string, {
+    description: string;
+    risk_level: string;
+    reversible: boolean;
+    use_cases: string[];
+  }>;
+  message: string;
+}
+
 /**
  * Analyze dataset for bias and risk
  */
@@ -109,6 +149,26 @@ export async function cleanDataset(file: File): Promise<CleanResponse> {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Cleaning failed');
+  }
+
+  return response.json();
+}
+
+/**
+ * Detect PII (without anonymizing) for user review
+ */
+export async function detectPII(file: File): Promise<DetectPIIResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/api/detect-pii`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'PII detection failed');
   }
 
   return response.json();
