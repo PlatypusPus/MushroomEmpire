@@ -192,40 +192,84 @@ class DataCleaner:
     
     def _init_presidio(self):
         """Initialize Presidio analyzer and anonymizer engines with GPU support"""
-        # Create NLP engine configuration
+        import spacy
+        
+        # Auto-detect the best available spaCy model
+        # Priority: sm (fastest for CPU) > lg (GPU-capable) > trf (transformer, slowest)
+        model_candidates = [
+            ("en_core_web_sm", "CPU-optimized, fastest for small-medium datasets", "CPU"),
+            ("en_core_web_lg", "GPU-capable, better accuracy", "GPU/CPU"),
+            ("en_core_web_trf", "Transformer-based, highest accuracy but slowest", "GPU")
+        ]
+        
+        model_name = None
+        model_description = None
+        model_device_pref = None
+        
+        print("\n🔍 Detecting available spaCy models...")
+        for candidate, description, device_pref in model_candidates:
+            if spacy.util.is_package(candidate):
+                model_name = candidate
+                model_description = description
+                model_device_pref = device_pref
+                print(f"✓ Found: {candidate} ({description})")
+                break
+            else:
+                print(f"  ✗ Not installed: {candidate}")
+        
+        if not model_name:
+            print(f"\n⚠️  No spaCy models found!")
+            print(f"   Install the fastest model with: python -m spacy download en_core_web_sm")
+            print(f"   Or for GPU acceleration: python -m spacy download en_core_web_lg")
+            print(f"   Presidio will not be initialized. Using regex-only detection.\n")
+            self.analyzer = None
+            self.anonymizer = None
+            return
+        
+        print(f"\n✓ Selected model: {model_name} (Recommended device: {model_device_pref})")
+        
+        # Create NLP engine configuration with the detected model
         configuration = {
             "nlp_engine_name": "spacy",
-            "models": [{"lang_code": "en", "model_name": "en_core_web_sm"}],
+            "models": [{"lang_code": "en", "model_name": model_name}],
         }
         
         try:
-            # Create NLP engine
+            # Create NLP engine with explicit configuration
             provider = NlpEngineProvider(nlp_configuration=configuration)
             nlp_engine = provider.create_engine()
             
-            # Enable GPU for spaCy if available
-            if self.use_gpu and SPACY_AVAILABLE:
+            # Enable GPU for spaCy if available and recommended for this model
+            if self.use_gpu and CUDA_AVAILABLE and model_name in ["en_core_web_lg", "en_core_web_trf"]:
                 try:
-                    import spacy
-                    # Move spaCy model to GPU
-                    spacy.require_gpu()
-                    print("✓ spaCy GPU acceleration enabled")
+                    # Set GPU preference for spaCy
+                    gpu_activated = spacy.prefer_gpu()
+                    if gpu_activated:
+                        print(f"✓ spaCy GPU acceleration enabled on {GPU_NAME}")
+                        device_info = f"GPU ({GPU_NAME})"
+                    else:
+                        print(f"⚠️  GPU preference set but not activated (expected for {model_name})")
+                        device_info = f"CPU (optimized for {model_name})"
                 except Exception as e:
                     print(f"⚠️  Could not enable spaCy GPU: {e}")
                     print("  Falling back to CPU for NLP processing")
+                    device_info = "CPU"
+            else:
+                if model_name == "en_core_web_sm":
+                    print(f"✓ Using CPU for {model_name} (faster than GPU for small models)")
+                device_info = f"CPU (optimized for {model_name})"
             
             # Create analyzer with NLP engine
             self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
             self.anonymizer = AnonymizerEngine()
             
-            device_info = "GPU" if self.use_gpu else "CPU"
             print(f"✓ Presidio engines initialized successfully ({device_info} mode)")
         except Exception as e:
-            # Fallback to default configuration if spaCy model not available
-            print(f"Warning: Could not load spaCy model, using default configuration: {e}")
-            print("Download spaCy model with: python -m spacy download en_core_web_sm")
-            self.analyzer = AnalyzerEngine()
-            self.anonymizer = AnonymizerEngine()
+            # Fallback - Presidio not available
+            print(f"⚠️  Could not initialize Presidio: {e}")
+            print("   Using regex-only detection as fallback")
+            self.analyzer = None
+            self.anonymizer = None
     
     def _add_nordic_recognizers(self, registry: RecognizerRegistry):
         """Add custom recognizers for Nordic national IDs and identifiers"""
@@ -395,6 +439,12 @@ class DataCleaner:
         
         device_info = f"GPU ({GPU_NAME})" if self.use_gpu else "CPU"
         print(f"  Scanning {len(columns_to_scan)} columns using {device_info}: {columns_to_scan}")
+        
+        # Check if Presidio is available
+        if self.analyzer is None:
+            print("\n⚠️  Presidio not available - cannot perform PII detection")
+            print("   Please install spaCy model: python -m spacy download en_core_web_sm")
+            return dict(pii_detections)
         
         for column in columns_to_scan:
             print(f"  Analyzing '{column}'...", end=" ")
@@ -574,6 +624,10 @@ class DataCleaner:
         """
         if not value or value == 'nan':
             return value
+        
+        # Check if Presidio is available
+        if self.analyzer is None or self.anonymizer is None:
+            return value  # Cannot anonymize without Presidio
         
         # Analyze this specific value
         results = self.analyzer.analyze(text=value, language='en')
