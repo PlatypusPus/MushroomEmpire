@@ -4,6 +4,19 @@ from pypdf import PdfReader
 from fastapi import FastAPI 
 import uvicorn
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or specify ["http://localhost:3000"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 client = chromadb.Client()
 collection = client.create_collection(name="docs")
 
@@ -20,7 +33,6 @@ for i, chunk in enumerate(chunks):
     )
 print("Embeddings done!")
 
-app = FastAPI()
 
 @app.post("/chat")
 async def chat_bot(prompt: str):
