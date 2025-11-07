@@ -18,26 +18,68 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 			const [fileMeta, setFileMeta] = useState<UploadedFileMeta | null>(null);
 		const [isDragging, setIsDragging] = useState(false);
 		const [progress, setProgress] = useState<number>(0);
+		const [progressLabel, setProgressLabel] = useState<string>("Processing");
 		const inputRef = useRef<HTMLInputElement | null>(null);
 			const [loadedFromCache, setLoadedFromCache] = useState(false);
 
 		const reset = () => {
 			setFileMeta(null);
 			setProgress(0);
+			setProgressLabel("Processing");
 		};
 
-		const processFile = useCallback((f: File) => {
+		const processFile = useCallback(async (f: File) => {
 		if (!f) return;
 			setProgress(0);
+			// For large files, show a progress bar while reading the file stream (no preview)
 			if (f.size > 1024 * 1024) {
-			setFileMeta({
-				name: f.name,
-				size: f.size,
-				type: f.type,
-				contentPreview: "File too large for preview (limit 1MB).",
-			});
-			return;
-		}
+				setProgressLabel("Uploading");
+				const metaObj: UploadedFileMeta = {
+					name: f.name,
+					size: f.size,
+					type: f.type || "unknown",
+					contentPreview: "File too large for preview (limit 1MB).",
+				};
+				setFileMeta(metaObj);
+				// Save to IndexedDB immediately so it persists without needing full read
+				(async () => {
+					try { await saveLatestUpload(f, metaObj); } catch {}
+				})();
+				// Use streaming read for progress without buffering entire file in memory
+				try {
+					const stream: ReadableStream<Uint8Array> | undefined = (typeof (f as any).stream === "function" ? (f as any).stream() : undefined);
+					if (stream && typeof stream.getReader === "function") {
+						const reader = stream.getReader();
+						let loaded = 0;
+						const total = f.size || 1;
+						for (;;) {
+							const { done, value } = await reader.read();
+							if (done) break;
+							loaded += value ? value.length : 0;
+							const pct = Math.min(100, Math.round((loaded / total) * 100));
+							setProgress(pct);
+						}
+						setProgress(100);
+					} else {
+						// Fallback to FileReader progress events
+						const reader = new FileReader();
+						reader.onprogress = (evt) => {
+							if (evt.lengthComputable) {
+								const pct = Math.min(100, Math.round((evt.loaded / evt.total) * 100));
+								setProgress(pct);
+							} else {
+								setProgress((p) => (p < 90 ? p + 5 : p));
+							}
+						};
+						reader.onloadend = () => setProgress(100);
+						reader.onerror = () => setProgress(0);
+						reader.readAsArrayBuffer(f);
+					}
+				} catch {
+					setProgress(100);
+				}
+				return;
+			}
 			const reader = new FileReader();
 			reader.onprogress = (evt) => {
 				if (evt.lengthComputable) {
@@ -63,6 +105,7 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 						try {
 							await saveLatestUpload(f, metaObj);
 						} catch {}
+					setProgressLabel("Processing");
 					setProgress(100);
 				} catch (e) {
 						const metaObj: UploadedFileMeta = {
@@ -75,6 +118,7 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 						try {
 							await saveLatestUpload(f, metaObj);
 						} catch {}
+					setProgressLabel("Processing");
 					setProgress(100);
 				}
 			};
@@ -163,7 +207,7 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 														style={{ width: `${progress}%` }}
 													/>
 												</div>
-												<div className="mt-1 text-xs text-slate-500">Processing {progress}%</div>
+												<div className="mt-1 text-xs text-slate-500">{progressLabel} {progress}%</div>
 											</div>
 										)}
 											{fileMeta && (

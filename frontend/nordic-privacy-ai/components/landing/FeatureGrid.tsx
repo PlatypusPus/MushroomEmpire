@@ -32,13 +32,17 @@ export function FeatureGrid() {
           Proactive privacy protection tailored for Nordic identity ecosystems and EU data law.
         </p>
       </Reveal>
-  <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+  <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch">
         {items.map((f, i) => (
-          <Reveal key={f.title} delayMs={i * 90}>
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-6 shadow-sm transition-transform duration-300 hover:-translate-y-0.5">
+          <Reveal key={f.title} delayMs={i * 90} className="h-full">
+            <div className="h-full rounded-xl border border-slate-200 bg-white/80 p-6 shadow-sm transition-transform duration-300 hover:-translate-y-0.5 flex flex-col">
               <div className="text-3xl">{f.emoji}</div>
               <h3 className="mt-3 font-semibold text-slate-900">{f.title}</h3>
-              <p className="mt-2 text-sm text-slate-600">{f.desc}</p>
+              <p className="mt-2 text-sm text-slate-600">
+                {f.desc}
+              </p>
+              {/* Spacer to ensure consistent padding at bottom when descriptions vary */}
+              <div className="mt-auto" />
             </div>
           </Reveal>
         ))}
