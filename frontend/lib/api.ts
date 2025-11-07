@@ -1,5 +1,5 @@
 /**
- * API Client for Nordic Privacy AI Backend
+ * API Client for ShroomShield Backend
  * Base URL: http://localhost:8000
  */
 

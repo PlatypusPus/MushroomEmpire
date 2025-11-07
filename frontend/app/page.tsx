@@ -18,7 +18,7 @@ export default function HomePage() {
         <div className="container-max relative text-center">
           <div className="mx-auto max-w-3xl">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900">
-              Proactive Nordic Data Privacy
+              ShroomShield
             </h1>
             <p className="mt-6 text-base sm:text-lg text-slate-700">
               AI agents that discover, classify, and remediate personal data across your ecosystem—built for BankID, MitID, and Suomi.fi contexts.

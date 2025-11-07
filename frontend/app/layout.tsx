@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Nordic Privacy AI',
-  description: 'AI-powered GDPR compliance platform for Nordic ecosystems',
+  title: 'ShroomShield',
+  description: 'AI-powered GDPR compliance platform',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

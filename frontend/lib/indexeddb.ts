@@ -2,7 +2,7 @@
  * IndexedDB utilities for caching uploaded files
  */
 
-const DB_NAME = 'NordicPrivacyAI';
+const DB_NAME = 'ShroomShield';
 const STORE_NAME = 'uploads';
 const DB_VERSION = 1;
 

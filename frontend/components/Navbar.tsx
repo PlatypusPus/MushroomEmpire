@@ -11,7 +11,7 @@ export function Navbar() {
   return (
     <nav className={`w-full sticky top-0 z-50 bg-white border-b border-slate-200 shadow-md`}>
       <div className="container-max flex items-center justify-between h-16">
-        <Link href="/" className="font-semibold text-brand-700 text-lg tracking-tight">Nordic Privacy AI</Link>
+        <Link href="/" className="font-semibold text-brand-700 text-lg tracking-tight">ShroomShield</Link>
         {/* Desktop nav */}
         {onTry ? (
           <div className="hidden md:flex items-center gap-6 text-sm">
