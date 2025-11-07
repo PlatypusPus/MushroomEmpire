@@ -3,14 +3,15 @@ Data Cleaning Router
 Handles PII detection and anonymization endpoints
 """
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
 import pandas as pd
 import numpy as np
 import io
 import os
+import json
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # Import cleaning module
 import sys
@@ -36,11 +37,16 @@ def convert_to_serializable(obj):
 
 
 @router.post("/clean")
-async def clean_dataset(file: UploadFile = File(...)):
+async def clean_dataset(
+    file: UploadFile = File(...),
+    custom_strategies: Optional[str] = Form(None)
+):
     """
     Clean uploaded dataset - detect and anonymize PII
     
     - **file**: CSV file to clean
+    - **custom_strategies**: Optional JSON string mapping column names to strategy choices
+      Format: {"column_name": {"enabled": true, "strategy": "HASHING"}}
     
     Returns:
         - Cleaned dataset statistics
@@ -52,6 +58,15 @@ async def clean_dataset(file: UploadFile = File(...)):
     # Validate file type
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
+    
+    # Parse custom strategies if provided
+    strategy_map = None
+    if custom_strategies:
+        try:
+            strategy_map = json.loads(custom_strategies)
+            print(f"Using custom strategies for {len(strategy_map)} columns")
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid custom_strategies JSON format")
     
     try:
         # Read uploaded file
@@ -65,9 +80,24 @@ async def clean_dataset(file: UploadFile = File(...)):
         print(f"Cleaning dataset: {file.filename} ({len(df)} rows, {len(df.columns)} columns)")
         cleaner = DataCleaner(df, use_gpu=True)
         
+        # If custom strategies provided, filter and apply only enabled columns
+        risky_features_to_clean = None
+        if strategy_map:
+            # Only clean columns that are enabled in the strategy map
+            enabled_columns = [col for col, config in strategy_map.items() if config.get('enabled', True)]
+            risky_features_to_clean = enabled_columns
+            print(f"  Using custom strategies for {len(enabled_columns)} enabled columns")
+            
+            # Store the strategy choices for the cleaner to use
+            cleaner.custom_strategy_map = {
+                col: config['strategy'] 
+                for col, config in strategy_map.items() 
+                if config.get('enabled', True)
+            }
+        
         # Run cleaning (non-interactive mode for API)
         cleaned_df, audit_report = cleaner.clean(
-            risky_features=None,  # Auto-detect
+            risky_features=risky_features_to_clean,  # Use custom list if provided, otherwise auto-detect
             interactive=False,    # No user prompts in API mode
             scan_all_cells=True
         )

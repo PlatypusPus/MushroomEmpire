@@ -157,6 +157,7 @@ class DataCleaner:
         self.audit_log = []
         self.cleaning_actions = {}
         self.use_gpu = use_gpu and CUDA_AVAILABLE
+        self.custom_strategy_map = {}  # Store custom anonymization strategies per column
         
         # Display GPU info
         self._display_gpu_info()
@@ -549,32 +550,40 @@ class DataCleaner:
         Returns:
             Modified DataFrame
         """
-        # Determine strategies for each entity type
-        strategies = {}
-        needs_prompt = []
-        
-        for detection in detections:
-            entity_type = detection['entity_type']
-            confidence = detection['avg_confidence']
-            default_strategy = self.config.STRATEGY_MAP.get(entity_type)
+        # Check if custom strategy is specified for this column
+        if column in self.custom_strategy_map:
+            custom_strategy = self.custom_strategy_map[column]
+            print(f"    🎯 Using custom strategy '{custom_strategy}' for column '{column}'")
             
-            # Decide if we need to prompt user
-            if confidence < self.config.MEDIUM_CONFIDENCE or default_strategy is None:
-                needs_prompt.append(detection)
-            else:
-                strategies[entity_type] = default_strategy
-        
-        # Interactive prompts for ambiguous cases
-        if interactive and needs_prompt:
-            print(f"\n  ⚠️  Column '{column}' has ambiguous PII detections:")
-            for i, detection in enumerate(needs_prompt, 1):
-                print(f"    {i}. {detection['entity_type']} "
-                      f"(confidence: {detection['avg_confidence']:.2f}, "
-                      f"count: {detection['count']})")
+            # Apply the custom strategy to all entities in this column
+            strategies = {detection['entity_type']: custom_strategy for detection in detections}
+        else:
+            # Determine strategies for each entity type (original logic)
+            strategies = {}
+            needs_prompt = []
             
-            strategy = self._prompt_user_strategy(column, needs_prompt)
-            for detection in needs_prompt:
-                strategies[detection['entity_type']] = strategy
+            for detection in detections:
+                entity_type = detection['entity_type']
+                confidence = detection['avg_confidence']
+                default_strategy = self.config.STRATEGY_MAP.get(entity_type)
+                
+                # Decide if we need to prompt user
+                if confidence < self.config.MEDIUM_CONFIDENCE or default_strategy is None:
+                    needs_prompt.append(detection)
+                else:
+                    strategies[entity_type] = default_strategy
+            
+            # Interactive prompts for ambiguous cases
+            if interactive and needs_prompt:
+                print(f"\n  ⚠️  Column '{column}' has ambiguous PII detections:")
+                for i, detection in enumerate(needs_prompt, 1):
+                    print(f"    {i}. {detection['entity_type']} "
+                          f"(confidence: {detection['avg_confidence']:.2f}, "
+                          f"count: {detection['count']})")
+                
+                strategy = self._prompt_user_strategy(column, needs_prompt)
+                for detection in needs_prompt:
+                    strategies[detection['entity_type']] = strategy
         
         # Apply strategies
         action_log = {

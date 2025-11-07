@@ -139,9 +139,17 @@ export async function analyzeDataset(file: File): Promise<AnalyzeResponse> {
 /**
  * Clean dataset - detect and anonymize PII
  */
-export async function cleanDataset(file: File): Promise<CleanResponse> {
+export async function cleanDataset(
+  file: File,
+  customStrategies?: Record<string, { enabled: boolean; strategy: string }>
+): Promise<CleanResponse> {
   const formData = new FormData();
   formData.append('file', file);
+  
+  // Add custom strategies if provided
+  if (customStrategies) {
+    formData.append('custom_strategies', JSON.stringify(customStrategies));
+  }
 
   const response = await fetch(`${API_BASE_URL}/api/clean`, {
     method: 'POST',

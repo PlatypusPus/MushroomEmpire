@@ -39,6 +39,9 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 	const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResponse | null>(null);
 	const [cleanResult, setCleanResult] = useState<CleanResponse | null>(null);
 	const [piiDetectionResult, setPIIDetectionResult] = useState<DetectPIIResponse | null>(null);
+	
+	// Strategy selection state
+	const [selectedStrategies, setSelectedStrategies] = useState<Record<string, { enabled: boolean; strategy: string }>>({});
 
 	const reset = () => {
 		setFileMeta(null);
@@ -86,6 +89,17 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 		try {
 			const result = await detectPII(uploadedFile);
 			setPIIDetectionResult(result);
+			
+			// Initialize strategy selections with recommended strategies
+			const initialStrategies: Record<string, { enabled: boolean; strategy: string }> = {};
+			result.risky_features.forEach(feature => {
+				initialStrategies[feature.column] = {
+					enabled: true, // All enabled by default
+					strategy: feature.recommended_strategy
+				};
+			});
+			setSelectedStrategies(initialStrategies);
+			
 			setProgressLabel("PII detection complete!");
 		} catch (err: any) {
 			setError(err.message || "PII detection failed");
@@ -105,7 +119,8 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 		setProgressLabel("Cleaning dataset...");
 		
 		try {
-			const result = await cleanDataset(uploadedFile);
+			// Pass the selected strategies to the API
+			const result = await cleanDataset(uploadedFile, selectedStrategies);
 			setCleanResult(result);
 			setProgressLabel("Cleaning complete!");
 		} catch (err: any) {
@@ -1873,7 +1888,63 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 								</div>
 
 								{/* Risky Features List */}
-								<div className="space-y-3">
+								<div className="space-y-4">
+									{/* Bulk Selection Controls */}
+									<div className="flex items-center justify-between p-3 bg-slate-100 rounded-lg border border-slate-300">
+										<div className="text-sm font-semibold text-slate-700">
+											Bulk Actions:
+										</div>
+										<div className="flex gap-2">
+											<button
+												onClick={() => {
+													const allEnabled: Record<string, { enabled: boolean; strategy: string }> = {};
+													piiDetectionResult.risky_features.forEach(feature => {
+														allEnabled[feature.column] = {
+															enabled: true,
+															strategy: selectedStrategies[feature.column]?.strategy ?? feature.recommended_strategy
+														};
+													});
+													setSelectedStrategies(allEnabled);
+												}}
+												className="px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-500"
+											>
+												✓ Enable All
+											</button>
+											<button
+												onClick={() => {
+													const allDisabled: Record<string, { enabled: boolean; strategy: string }> = {};
+													piiDetectionResult.risky_features.forEach(feature => {
+														allDisabled[feature.column] = {
+															enabled: false,
+															strategy: selectedStrategies[feature.column]?.strategy ?? feature.recommended_strategy
+														};
+													});
+													setSelectedStrategies(allDisabled);
+												}}
+												className="px-3 py-1 bg-slate-600 text-white text-xs font-semibold rounded hover:bg-slate-500"
+											>
+												✗ Disable All
+											</button>
+											<button
+												onClick={() => {
+													const reset: Record<string, { enabled: boolean; strategy: string }> = {};
+													piiDetectionResult.risky_features.forEach(feature => {
+														reset[feature.column] = {
+															enabled: true,
+															strategy: feature.recommended_strategy
+														};
+													});
+													setSelectedStrategies(reset);
+												}}
+												className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-500"
+											>
+												↻ Reset to Recommended
+											</button>
+										</div>
+									</div>
+									
+									{/* Individual Feature Cards */}
+									<div className="space-y-3">
 									{piiDetectionResult.risky_features.map((feature, idx) => {
 										const riskColor = 
 											feature.risk_level === 'HIGH' ? 'red' :
@@ -1885,23 +1956,43 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 											feature.risk_level === 'MEDIUM' ? 'bg-orange-50 border-orange-300' :
 											feature.risk_level === 'LOW' ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-300';
 										
+										const isEnabled = selectedStrategies[feature.column]?.enabled ?? true;
+										const selectedStrategy = selectedStrategies[feature.column]?.strategy ?? feature.recommended_strategy;
+										
 										return (
-											<div key={idx} className={`p-5 rounded-xl border-2 ${bgColor}`}>
-												{/* Header */}
+											<div key={idx} className={`p-5 rounded-xl border-2 ${bgColor} ${!isEnabled ? 'opacity-60' : ''}`}>
+												{/* Header with Checkbox */}
 												<div className="flex items-start justify-between mb-3">
-													<div className="flex-1">
-														<div className="flex items-center gap-3 mb-2">
-															<span className={`px-3 py-1 bg-${riskColor}-600 text-white text-xs font-bold rounded-full`}>
-																{feature.risk_level} RISK
-															</span>
-															<span className="font-mono font-bold text-lg text-slate-800">{feature.column}</span>
-														</div>
-														<div className="text-sm text-slate-700">
-															<span className="font-semibold">Detected:</span> {feature.entity_type}
-															<span className="mx-2">•</span>
-															<span className="font-semibold">Confidence:</span> {(feature.confidence * 100).toFixed(1)}%
-															<span className="mx-2">•</span>
-															<span className="font-semibold">Occurrences:</span> {feature.detection_count}
+													<div className="flex items-start gap-3 flex-1">
+														<input
+															type="checkbox"
+															checked={isEnabled}
+															onChange={(e) => {
+																setSelectedStrategies(prev => ({
+																	...prev,
+																	[feature.column]: {
+																		...prev[feature.column],
+																		enabled: e.target.checked,
+																		strategy: prev[feature.column]?.strategy ?? feature.recommended_strategy
+																	}
+																}));
+															}}
+															className="mt-1 w-5 h-5 text-green-600 rounded focus:ring-2 focus:ring-green-500 cursor-pointer"
+														/>
+														<div className="flex-1">
+															<div className="flex items-center gap-3 mb-2">
+																<span className={`px-3 py-1 bg-${riskColor}-600 text-white text-xs font-bold rounded-full`}>
+																	{feature.risk_level} RISK
+																</span>
+																<span className="font-mono font-bold text-lg text-slate-800">{feature.column}</span>
+															</div>
+															<div className="text-sm text-slate-700">
+																<span className="font-semibold">Detected:</span> {feature.entity_type}
+																<span className="mx-2">•</span>
+																<span className="font-semibold">Confidence:</span> {(feature.confidence * 100).toFixed(1)}%
+																<span className="mx-2">•</span>
+																<span className="font-semibold">Occurrences:</span> {feature.detection_count}
+															</div>
 														</div>
 													</div>
 												</div>
@@ -1929,75 +2020,126 @@ export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
 													</div>
 												)}
 
-												{/* Recommended Strategy */}
-												<div className="p-4 bg-white rounded-lg border-2 border-green-300">
+												{/* Strategy Selection */}
+												<div className={`p-4 bg-white rounded-lg border-2 ${isEnabled ? 'border-green-300' : 'border-slate-300'}`}>
 													<div className="flex items-start gap-3">
 														<div className="flex-1">
-															<div className="text-xs font-semibold text-green-700 mb-1">✓ RECOMMENDED STRATEGY</div>
-															<div className="font-bold text-lg text-slate-900">{feature.recommended_strategy}</div>
-															<div className="text-sm text-slate-700 mt-1">{feature.strategy_description}</div>
-															<div className="mt-2 flex gap-4 text-xs text-slate-600">
-																<div>
-																	<strong>Reversible:</strong> {feature.reversible ? 'Yes' : 'No'}
-																</div>
-																<div>
-																	<strong>Use Cases:</strong> {feature.use_cases.join(', ')}
-																</div>
+															<div className="text-xs font-semibold text-slate-700 mb-2">
+																{isEnabled ? '✓ SELECT ANONYMIZATION STRATEGY' : '⚠️ STRATEGY DISABLED'}
 															</div>
-														</div>
-														<button
-															className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-500"
-															onClick={() => alert(`Apply ${feature.recommended_strategy} to ${feature.column}`)}
-														>
-															Apply
-														</button>
-													</div>
-												</div>
-
-												{/* Alternative Strategies */}
-												<details className="mt-3">
-													<summary className="text-xs font-semibold text-slate-600 cursor-pointer hover:text-slate-800">
-														View Alternative Strategies
-													</summary>
-													<div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-														{Object.entries(piiDetectionResult.available_strategies)
-															.filter(([strategy]) => strategy !== feature.recommended_strategy)
-															.map(([strategy, details]: [string, any]) => (
-																<div key={strategy} className="p-3 bg-white rounded border border-slate-200 hover:border-slate-400">
-																	<div className="font-semibold text-sm text-slate-800">{strategy}</div>
-																	<div className="text-xs text-slate-600 mt-1">{details.description}</div>
-																	<div className="mt-2 flex items-center justify-between">
-																		<span className={`px-2 py-0.5 text-xs rounded ${
-																			details.risk_level === 'HIGH' ? 'bg-red-100 text-red-800' :
-																			details.risk_level === 'MEDIUM' ? 'bg-orange-100 text-orange-800' :
-																			'bg-yellow-100 text-yellow-800'
-																		}`}>
-																			{details.risk_level} Risk
-																		</span>
-																		<button
-																			className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-500"
-																			onClick={() => alert(`Apply ${strategy} to ${feature.column}`)}
-																		>
-																			Use This
-																		</button>
+															<select
+																value={selectedStrategy}
+																onChange={(e) => {
+																	setSelectedStrategies(prev => ({
+																		...prev,
+																		[feature.column]: {
+																			enabled: isEnabled,
+																			strategy: e.target.value
+																		}
+																	}));
+																}}
+																disabled={!isEnabled}
+																className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+															>
+																{Object.keys(piiDetectionResult.available_strategies).map(strategy => (
+																	<option key={strategy} value={strategy}>
+																		{strategy}
+																	</option>
+																))}
+															</select>
+															
+															{/* Show selected strategy description */}
+															{isEnabled && piiDetectionResult.available_strategies[selectedStrategy] && (
+																<div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+																	<div className="text-sm text-slate-700 mb-2">
+																		{piiDetectionResult.available_strategies[selectedStrategy].description}
+																	</div>
+																	<div className="flex gap-4 text-xs text-slate-600">
+																		<div>
+																			<strong>Risk Level:</strong>{' '}
+																			<span className={`px-2 py-0.5 rounded ${
+																				piiDetectionResult.available_strategies[selectedStrategy].risk_level === 'HIGH' ? 'bg-red-100 text-red-800' :
+																				piiDetectionResult.available_strategies[selectedStrategy].risk_level === 'MEDIUM' ? 'bg-orange-100 text-orange-800' :
+																				'bg-yellow-100 text-yellow-800'
+																			}`}>
+																				{piiDetectionResult.available_strategies[selectedStrategy].risk_level}
+																			</span>
+																		</div>
+																		<div>
+																			<strong>Reversible:</strong> {piiDetectionResult.available_strategies[selectedStrategy].reversible ? 'Yes' : 'No'}
+																		</div>
+																	</div>
+																	<div className="mt-2 text-xs text-slate-600">
+																		<strong>Use Cases:</strong> {piiDetectionResult.available_strategies[selectedStrategy].use_cases.join(', ')}
 																	</div>
 																</div>
-															))}
+															)}
+														</div>
 													</div>
-												</details>
+												</div>
 											</div>
 										);
 									})}
+									</div>
 								</div>
 
 								{/* Apply All Button */}
 								<div className="sticky bottom-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
+									{/* Strategy Summary */}
+									<div className="mb-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+										<div className="text-sm font-semibold text-blue-900 mb-2">
+											📋 Selected Strategies Summary
+										</div>
+										<div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+											<div className="p-2 bg-white rounded border border-blue-200">
+												<div className="font-semibold text-slate-700">Total Features:</div>
+												<div className="text-2xl font-bold text-blue-900">
+													{piiDetectionResult.risky_features.length}
+												</div>
+											</div>
+											<div className="p-2 bg-white rounded border border-green-200">
+												<div className="font-semibold text-slate-700">Enabled:</div>
+												<div className="text-2xl font-bold text-green-900">
+													{Object.values(selectedStrategies).filter(s => s.enabled).length}
+												</div>
+											</div>
+											<div className="p-2 bg-white rounded border border-slate-200">
+												<div className="font-semibold text-slate-700">Disabled:</div>
+												<div className="text-2xl font-bold text-slate-900">
+													{Object.values(selectedStrategies).filter(s => !s.enabled).length}
+												</div>
+											</div>
+										</div>
+										<div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
+											<div className="text-xs font-semibold text-slate-600 mb-2">Enabled Strategies:</div>
+											<div className="flex flex-wrap gap-2">
+												{Object.entries(selectedStrategies)
+													.filter(([_, config]) => config.enabled)
+													.map(([column, config]) => (
+														<div key={column} className="px-2 py-1 bg-blue-100 text-blue-900 rounded text-xs font-medium border border-blue-300">
+															<strong>{column}:</strong> {config.strategy}
+														</div>
+													))}
+												{Object.values(selectedStrategies).filter(s => s.enabled).length === 0 && (
+													<div className="text-xs text-slate-500 italic">No strategies enabled</div>
+												)}
+											</div>
+										</div>
+									</div>
+									
 									<button
-										className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500 shadow-lg"
-										onClick={() => alert('Apply all recommended strategies and clean dataset')}
+										className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+										disabled={isProcessing || !uploadedFile || Object.values(selectedStrategies).filter(s => s.enabled).length === 0}
+										onClick={handleClean}
 									>
-										✓ Apply All Recommended Strategies & Clean Dataset
+										{isProcessing ? '⏳ Processing...' : 
+										 Object.values(selectedStrategies).filter(s => s.enabled).length === 0 ? 
+										 '⚠️ Enable at least one strategy to clean' :
+										 `✓ Apply ${Object.values(selectedStrategies).filter(s => s.enabled).length} Selected Strategies & Clean Dataset`}
 									</button>
+									<div className="mt-2 text-xs text-center text-slate-500">
+										Note: Only enabled features will be anonymized
+									</div>
 								</div>
 							</div>
 						) : (
