@@ -27,10 +27,15 @@ export interface AnalyzeResponse {
   };
   risk_assessment: {
     overall_risk_score: number;
-    privacy_risks: any[];
+    risk_level?: string;
+    presidio_enabled?: boolean;
+    risk_categories?: Record<string, number>;
+    privacy_risks: any;
     ethical_risks: any[];
-    compliance_risks: any[];
+    compliance_risks: any;
     data_quality_risks: any[];
+    violations?: any[];
+    insights?: string[];
   };
   recommendations: string[];
   report_file: string;

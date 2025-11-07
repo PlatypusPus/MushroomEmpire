@@ -98,13 +98,14 @@ class AIGovernanceAnalyzer:
         )
         bias_results = self.bias_analyzer.analyze()
         
-        # Step 4: Assess risks
+        # Step 4: Assess risks with Presidio-enhanced detection
         self.risk_analyzer = RiskAnalyzer(
             self.processor.df,
             self.trainer.results,
             bias_results,
             self.processor.protected_attributes,
-            self.processor.target_column
+            self.processor.target_column,
+            use_presidio=False  # Set to True after installing: python -m spacy download en_core_web_sm
         )
         risk_results = self.risk_analyzer.analyze()
         

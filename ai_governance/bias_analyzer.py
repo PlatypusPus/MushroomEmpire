@@ -49,26 +49,43 @@ class BiasAnalyzer:
         try:
             print("⏳ Initializing Presidio analyzer (first time only)...")
             
-            # Check if spaCy model is available
+            # Check if spaCy and model are available
             try:
                 import spacy
-                try:
-                    spacy.load("en_core_web_sm")
-                except OSError:
-                    print("⚠️  spaCy model 'en_core_web_sm' not found. Run: python -m spacy download en_core_web_sm")
+                
+                # Check if model exists WITHOUT loading it first
+                model_name = "en_core_web_sm"
+                if not spacy.util.is_package(model_name):
+                    print(f"⚠️  spaCy model '{model_name}' not found.")
+                    print(f"   To enable Presidio, install the model with:")
+                    print(f"   python -m spacy download {model_name}")
+                    print("   Continuing without Presidio-enhanced detection...")
                     BiasAnalyzer._presidio_init_failed = True
                     return
+                
+                # Model exists, now load it
+                print(f"✓ spaCy model '{model_name}' found, loading...")
+                nlp = spacy.load(model_name)
+                
             except ImportError:
                 print("⚠️  spaCy not installed. Install with: pip install spacy")
                 BiasAnalyzer._presidio_init_failed = True
                 return
+            except Exception as e:
+                print(f"⚠️  Error loading spaCy model: {e}")
+                print("   Continuing without Presidio-enhanced detection...")
+                BiasAnalyzer._presidio_init_failed = True
+                return
             
-            # Create NLP engine
-            provider = NlpEngineProvider()
-            nlp_configuration = {
+            # Create NLP engine configuration (prevent auto-download)
+            from presidio_analyzer.nlp_engine import NlpEngineProvider
+            
+            configuration = {
                 "nlp_engine_name": "spacy",
-                "models": [{"lang_code": "en", "model_name": "en_core_web_sm"}]
+                "models": [{"lang_code": "en", "model_name": model_name}],
             }
+            
+            provider = NlpEngineProvider(nlp_configuration=configuration)
             nlp_engine = provider.create_engine()
             
             # Initialize analyzer
