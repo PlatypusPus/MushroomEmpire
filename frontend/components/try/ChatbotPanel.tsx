@@ -73,12 +73,12 @@ export function ChatbotPanel() {
 			}
 	}
 
-	return (
-		<div className="flex flex-col h-full border-l border-slate-200 bg-white/80">
+		return (
+			<div className="flex flex-col h-full border-l border-slate-200 bg-white/80 overflow-hidden">
 			<div className="h-14 flex items-center px-4 border-b border-slate-200">
 				<h2 className="font-semibold text-sm text-brand-700">Privacy Copilot</h2>
 			</div>
-			<div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+				<div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
 				{messages.map((m, i) => (
 					<div
 						key={i}

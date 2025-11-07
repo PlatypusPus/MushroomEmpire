@@ -9,13 +9,13 @@ export default function TryPage() {
   const [tab, setTab] = useState<TryTab>("processing");
 
   return (
-    <main className="min-h-screen flex flex-col">
+    <main className="h-screen flex flex-col">
       <Navbar />
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar value={tab} onChange={setTab} />
-        <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 min-h-0 flex overflow-hidden">
           <div className="flex-1 min-h-0 min-w-0"><CenterPanel tab={tab} onAnalyze={() => setTab("bias-analysis")} /></div>
-          <div className="w-[360px] hidden xl:block"><ChatbotPanel /></div>
+          <div className="w-[360px] hidden xl:block h-full flex-none"><ChatbotPanel /></div>
         </div>
       </div>
     </main>
