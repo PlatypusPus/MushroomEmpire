@@ -123,10 +123,14 @@ async def analyze_dataset(file: UploadFile = File(...)):
             },
             "risk_assessment": {
                 "overall_risk_score": risk_assessment.get("overall_risk_score", 0),
-                "privacy_risks": risk_assessment.get("privacy_risks", []),
-                "ethical_risks": risk_assessment.get("ethical_risks", []),
-                "compliance_risks": risk_assessment.get("risk_categories", {}).get("compliance_risks", []),
-                "data_quality_risks": risk_assessment.get("risk_categories", {}).get("data_quality_risks", [])
+                "risk_level": risk_assessment.get("risk_level", "LOW"),
+                "presidio_enabled": risk_assessment.get("presidio_enabled", False),
+                "privacy_risks": risk_assessment.get("privacy_risks", {}),
+                "ethical_risks": risk_assessment.get("ethical_risks", {}),
+                "compliance_risks": risk_assessment.get("compliance_risks", {}),
+                "risk_categories": risk_assessment.get("risk_categories", {}),
+                "violations": risk_assessment.get("violations", []),
+                "insights": risk_assessment.get("insights", [])
             },
             "recommendations": report.get("recommendations", []),
             "report_file": f"/{report_path}",

@@ -4,6 +4,8 @@
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Base URL for chat backend (do not include path)
+const CHAT_API_BASE_URL = process.env.NEXT_PUBLIC_CHAT_API_URL || 'https://f52c8f4e7dfc.ngrok-free.app';
 
 export interface AnalyzeResponse {
   status: string;
@@ -187,4 +189,43 @@ export function getReportUrl(reportPath: string): string {
 export async function healthCheck() {
   const response = await fetch(`${API_BASE_URL}/health`);
   return response.json();
+}
+
+/**
+ * Chat with Privacy Copilot (ngrok tunneled backend)
+ * Provides a resilient call with extended timeout and delayed error surfacing.
+ */
+export async function chatWithCopilot(prompt: string): Promise<string> {
+  if (!prompt.trim()) throw new Error('Empty prompt');
+
+  const controller = new AbortController();
+  const timeoutMs = 120_000; // allow up to 2 minutes for slow local model
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    // EXACT same request style as the provided curl:
+    // curl -X POST 'https://<host>/chat?prompt=hello' -H 'accept: application/json' -d ''
+    const url = `${CHAT_API_BASE_URL}/chat?prompt=${encodeURIComponent(prompt)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'accept': 'application/json' },
+      body: '', // empty body
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      let detail: any = undefined;
+      try { detail = await res.json(); } catch {}
+      throw new Error(detail?.detail || `Chat failed (${res.status})`);
+    }
+
+    const json = await res.json();
+    return json.response || JSON.stringify(json);
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Request timed out – model may be overloaded.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }

@@ -1,23 +1,15 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export function Navbar() {
   const pathname = usePathname();
   const onTry = pathname?.startsWith('/try');
-  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   return (
-    <nav className={`w-full sticky top-0 z-50 transition-colors ${scrolled ? 'bg-white/90 border-b border-slate-200/70 shadow-sm' : 'bg-white/70 border-b border-transparent'}`}>
+    <nav className={`w-full sticky top-0 z-50 bg-white border-b border-slate-200 shadow-md`}>
       <div className="container-max flex items-center justify-between h-16">
         <Link href="/" className="font-semibold text-brand-700 text-lg tracking-tight">Nordic Privacy AI</Link>
         {/* Desktop nav */}
