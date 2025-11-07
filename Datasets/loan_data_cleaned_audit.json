@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "timestamp": "2025-11-07T08:59:26.645555",
+    "original_rows": 45000,
+    "original_columns": 14,
+    "cleaned_rows": 45000,
+    "cleaned_columns": 13,
+    "presidio_version": "enabled",
+    "gpu_acceleration": {
+      "enabled": true,
+      "cuda_available": true,
+      "device": "NVIDIA GeForce RTX 4050 Laptop GPU",
+      "gpu_memory_gb": 5.99658203125
+    }
+  },
+  "summary": {
+    "columns_removed": [
+      "person_education"
+    ],
+    "columns_anonymized": [
+      "loan_intent",
+      "person_home_ownership"
+    ],
+    "total_cells_affected": 49906
+  },
+  "details": {
+    "loan_intent": {
+      "action": "ANONYMIZED",
+      "strategies_applied": [
+        "HASH"
+      ],
+      "reason": "Contains ORGANIZATION entities. Applied hash anonymization to protect privacy.",
+      "entity_types_found": [
+        "ORGANIZATION"
+      ],
+      "num_affected_rows": 23512,
+      "percentage_affected": "52.2%",
+      "examples": [
+        {
+          "before": "MEDICAL",
+          "after": "a978e21c3754862e57020380a3e9ea7ed66e16dfa3db6fb28b"
+        },
+        {
+          "before": "MEDICAL",
+          "after": "a978e21c3754862e57020380a3e9ea7ed66e16dfa3db6fb28b"
+        },
+        {
+          "before": "MEDICAL",
+          "after": "a978e21c3754862e57020380a3e9ea7ed66e16dfa3db6fb28b"
+        }
+      ],
+      "presidio_metrics": {
+        "avg_confidence": 0.85,
+        "detections": [
+          {
+            "entity_type": "ORGANIZATION",
+            "count": 49,
+            "avg_confidence": 0.85,
+            "max_confidence": 0.85,
+            "min_confidence": 0.85
+          }
+        ]
+      },
+      "gdpr_compliance": []
+    },
+    "person_home_ownership": {
+      "action": "ANONYMIZED",
+      "strategies_applied": [
+        "MASK"
+      ],
+      "reason": "Contains ORGANIZATION, LOCATION entities. Applied mask anonymization to protect privacy.",
+      "entity_types_found": [
+        "ORGANIZATION",
+        "LOCATION"
+      ],
+      "num_affected_rows": 26394,
+      "percentage_affected": "58.7%",
+      "examples": [
+        {
+          "before": "RENT",
+          "after": "****"
+        },
+        {
+          "before": "OWN",
+          "after": "***"
+        },
+        {
+          "before": "RENT",
+          "after": "****"
+        }
+      ],
+      "presidio_metrics": {
+        "avg_confidence": 0.85,
+        "detections": [
+          {
+            "entity_type": "ORGANIZATION",
+            "count": 24,
+            "avg_confidence": 0.85,
+            "max_confidence": 0.85,
+            "min_confidence": 0.85
+          },
+          {
+            "entity_type": "LOCATION",
+            "count": 49,
+            "avg_confidence": 0.85,
+            "max_confidence": 0.85,
+            "min_confidence": 0.85
+          }
+        ]
+      },
+      "gdpr_compliance": [
+        "Art. 4(1) - Personal data (location)"
+      ]
+    },
+    "person_education": {
+      "action": "REMOVED",
+      "reason": "Contains HIGH risk PII requiring removal",
+      "entity_types_found": [
+        "ORGANIZATION"
+      ],
+      "risk_level": "HIGH",
+      "presidio_metrics": {
+        "detections": [
+          {
+            "entity_type": "ORGANIZATION",
+            "count": 4,
+            "avg_confidence": 0.85,
+            "max_confidence": 0.85,
+            "min_confidence": 0.85
+          }
+        ]
+      },
+      "gdpr_compliance": []
+    }
+  },
+  "compliance": {
+    "gdpr_articles_applied": [
+      "Art. 4(1) - Personal data (location)"
+    ],
+    "risk_mitigation": {}
+  }
+}

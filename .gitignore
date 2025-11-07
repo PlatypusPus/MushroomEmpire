@@ -58,3 +58,5 @@ reports/*.pdf
 # Data (keep demo dataset)
 *.csv
 !Datasets/loan_data.csv
+
+Data
