@@ -14,7 +14,7 @@ export default function TryPage() {
       <div className="flex flex-1 min-h-0">
         <Sidebar value={tab} onChange={setTab} />
         <div className="flex-1 min-h-0 flex">
-          <div className="flex-1 min-h-0"><CenterPanel tab={tab} /></div>
+          <div className="flex-1 min-h-0 min-w-0"><CenterPanel tab={tab} onAnalyze={() => setTab("bias-analysis")} /></div>
           <div className="w-[360px] hidden xl:block"><ChatbotPanel /></div>
         </div>
       </div>

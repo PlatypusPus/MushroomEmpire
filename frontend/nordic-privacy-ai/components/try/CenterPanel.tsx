@@ -5,6 +5,7 @@ import { saveLatestUpload, getLatestUpload, deleteLatestUpload } from "../../lib
 
 interface CenterPanelProps {
 	tab: TryTab;
+	onAnalyze?: () => void;
 }
 
 interface UploadedFileMeta {
@@ -14,11 +15,19 @@ interface UploadedFileMeta {
 	contentPreview: string;
 }
 
-export function CenterPanel({ tab }: CenterPanelProps) {
+interface TablePreviewData {
+	headers: string[];
+	rows: string[][];
+	origin: 'csv';
+}
+
+export function CenterPanel({ tab, onAnalyze }: CenterPanelProps) {
+		const PREVIEW_BYTES = 64 * 1024; // read first 64KB slice for large-file preview
 			const [fileMeta, setFileMeta] = useState<UploadedFileMeta | null>(null);
 		const [isDragging, setIsDragging] = useState(false);
 		const [progress, setProgress] = useState<number>(0);
 		const [progressLabel, setProgressLabel] = useState<string>("Processing");
+		const [tablePreview, setTablePreview] = useState<TablePreviewData | null>(null);
 		const inputRef = useRef<HTMLInputElement | null>(null);
 			const [loadedFromCache, setLoadedFromCache] = useState(false);
 
@@ -26,10 +35,43 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 			setFileMeta(null);
 			setProgress(0);
 			setProgressLabel("Processing");
+			setTablePreview(null);
 		};
+
+		function tryParseCSV(text: string, maxRows = 50, maxCols = 40): TablePreviewData | null {
+			const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+			if (lines.length < 2) return null;
+			const commaDensity = lines.slice(0, 10).filter(l => l.includes(',')).length;
+			if (commaDensity < 2) return null;
+			const parseLine = (line: string) => {
+				const out: string[] = [];
+				let cur = '';
+				let inQuotes = false;
+				for (let i = 0; i < line.length; i++) {
+					const ch = line[i];
+					if (ch === '"') {
+						if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = !inQuotes; }
+					} else if (ch === ',' && !inQuotes) {
+						out.push(cur);
+						cur = '';
+					} else { cur += ch; }
+				}
+				out.push(cur);
+				return out.map(c => c.trim());
+			};
+			const raw = lines.slice(0, maxRows).map(parseLine);
+			if (raw.length === 0) return null;
+			const headers = raw[0];
+			const colCount = Math.min(headers.length, maxCols);
+			const rows = raw.slice(1).map(r => r.slice(0, colCount));
+			return { headers: headers.slice(0, colCount), rows, origin: 'csv' };
+		}
+
+		// We no longer build table preview for JSON; revert JSON to raw text view.
 
 		const processFile = useCallback(async (f: File) => {
 		if (!f) return;
+		const isCSV = /\.csv$/i.test(f.name);
 			setProgress(0);
 			// For large files, show a progress bar while reading the file stream (no preview)
 			if (f.size > 1024 * 1024) {
@@ -38,13 +80,35 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 					name: f.name,
 					size: f.size,
 					type: f.type || "unknown",
-					contentPreview: "File too large for preview (limit 1MB).",
+					contentPreview: `Loading partial preview (first ${Math.round(PREVIEW_BYTES/1024)}KB)...`,
 				};
 				setFileMeta(metaObj);
+				setTablePreview(null);
 				// Save to IndexedDB immediately so it persists without needing full read
 				(async () => {
 					try { await saveLatestUpload(f, metaObj); } catch {}
 				})();
+				// Read head slice for partial preview & possible CSV table extraction
+				try {
+					const headBlob = f.slice(0, PREVIEW_BYTES);
+					const headReader = new FileReader();
+					headReader.onload = async () => {
+						try {
+							const buf = headReader.result as ArrayBuffer;
+							const decoder = new TextDecoder();
+							const text = decoder.decode(buf);
+							setFileMeta(prev => prev ? { ...prev, contentPreview: text.slice(0, 4000) } : prev);
+							if (isCSV) {
+								const parsed = tryParseCSV(text);
+								setTablePreview(parsed);
+							} else {
+								setTablePreview(null);
+							}
+							try { await saveLatestUpload(f, { ...metaObj, contentPreview: text.slice(0, 4000) }); } catch {}
+						} catch { /* ignore */ }
+					};
+					headReader.readAsArrayBuffer(headBlob);
+				} catch { /* ignore */ }
 				// Use streaming read for progress without buffering entire file in memory
 				try {
 					const stream: ReadableStream<Uint8Array> | undefined = (typeof (f as any).stream === "function" ? (f as any).stream() : undefined);
@@ -101,6 +165,12 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 						contentPreview: text.slice(0, 4000),
 						};
 						setFileMeta(metaObj);
+						if (isCSV) {
+							const parsed = tryParseCSV(text);
+							setTablePreview(parsed);
+						} else {
+							setTablePreview(null);
+						}
 						// Save file blob and meta to browser cache (IndexedDB)
 						try {
 							await saveLatestUpload(f, metaObj);
@@ -115,6 +185,7 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 						contentPreview: "Unable to decode preview.",
 						};
 						setFileMeta(metaObj);
+						setTablePreview(null);
 						try {
 							await saveLatestUpload(f, metaObj);
 						} catch {}
@@ -164,13 +235,13 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 			}, [tab]);
 
 	function renderTabContent() {
-		switch (tab) {
+			switch (tab) {
 			case "processing":
-				return (
-					<div className="space-y-4">
+					return (
+						<div className="space-y-4 max-w-[1100px] xl:max-w-[1200px] w-full mx-auto">
 						<h2 className="text-xl font-semibold">Upload & Process Data</h2>
 						<p className="text-sm text-slate-600">Upload a CSV / JSON / text file. We will later parse, detect PII, and queue analyses.</p>
-									<div className="flex flex-col gap-3">
+									<div className="flex flex-col gap-3 min-w-0">
 										<div
 											onDragOver={onDragOver}
 											onDragLeave={onDragLeave}
@@ -220,10 +291,34 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 														<div className="mb-2 text-[11px] text-brand-700">Loaded from browser cache</div>
 													)}
 												<div className="mb-3 text-xs text-slate-500">{fileMeta.type || "Unknown type"}</div>
-									<pre className="max-h-64 overflow-auto text-xs bg-slate-50 p-3 rounded-md whitespace-pre-wrap leading-relaxed">
-										{fileMeta.contentPreview || "(no preview)"}
-									</pre>
-												<div className="mt-3 flex justify-end">
+												{/* Table preview when structured data detected; otherwise show text */}
+												{tablePreview && tablePreview.origin === 'csv' ? (
+													<div className="max-h-64 w-full min-w-0 overflow-x-auto overflow-y-auto rounded-md bg-slate-50">
+														<table className="min-w-full text-xs">
+															<thead className="sticky top-0 bg-slate-100">
+																<tr>
+																	{tablePreview.headers.map((h, idx) => (
+																		<th key={idx} className="text-left font-semibold px-3 py-2 border-b border-slate-200 whitespace-nowrap">{h}</th>
+																	))}
+																</tr>
+															</thead>
+															<tbody>
+																{tablePreview.rows.map((r, i) => (
+																	<tr key={i} className={i % 2 === 0 ? "" : "bg-slate-100/50"}>
+																		{r.map((c, j) => (
+																			<td key={j} className="px-3 py-1.5 border-b border-slate-100 whitespace-nowrap max-w-[24ch] overflow-hidden text-ellipsis">{c}</td>
+																		))}
+																	</tr>
+																))}
+															</tbody>
+														</table>
+													</div>
+												) : (
+													<pre className="max-h-64 overflow-auto text-xs bg-slate-50 p-3 rounded-md whitespace-pre-wrap leading-relaxed">
+														{fileMeta.contentPreview || "(no preview)"}
+													</pre>
+												)}
+												<div className="mt-3 flex justify-end gap-2">
 													<button
 														type="button"
 															onClick={async () => {
@@ -234,6 +329,13 @@ export function CenterPanel({ tab }: CenterPanelProps) {
 														className="text-xs rounded-md border px-3 py-1.5 hover:bg-slate-50"
 													>
 														Clear
+													</button>
+													<button
+														type="button"
+														onClick={() => onAnalyze?.()}
+														className="text-xs rounded-md bg-brand-600 text-white px-3 py-1.5 hover:bg-brand-500"
+													>
+														Analyze
 													</button>
 												</div>
 								</div>
