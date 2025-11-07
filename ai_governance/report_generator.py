@@ -117,6 +117,7 @@ class ReportGenerator:
         privacy = self.risk_results.get('privacy_risks', {})
         
         return {
+            'pii_detected': privacy.get('pii_detected', []),  # Include full PII detections array
             'pii_count': len(privacy.get('pii_detected', [])),
             'anonymization_level': privacy.get('anonymization_level', 'UNKNOWN'),
             'exposure_risk_count': len(privacy.get('exposure_risks', [])),
