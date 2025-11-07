@@ -1,7 +1,6 @@
 "use client";
 import { TryTab } from "./Sidebar";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { saveLatestUpload, getLatestUpload, deleteLatestUpload } from "../../lib/idb";
 
 interface CenterPanelProps {
 	tab: TryTab;
