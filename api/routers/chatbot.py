@@ -1,7 +1,9 @@
 import ollama
 import chromadb
 from pypdf import PdfReader 
-from fastapi import FastAPI 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 
 client = chromadb.Client()
@@ -22,11 +24,24 @@ print("Embeddings done!")
 
 app = FastAPI()
 
+# Allow browser calls from the frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class ChatRequest(BaseModel):
+    prompt: str
+
 @app.post("/chat")
-async def chat_bot(prompt: str):
-    if not prompt:
-        return
-    query = prompt
+async def chat_bot(prompt: str | None = None, body: ChatRequest | None = None):
+    # Accept prompt from either query (?prompt=) or JSON body {"prompt": "..."}
+    query = prompt or (body.prompt if body else None)
+    if not query:
+        raise HTTPException(status_code=400, detail="Missing prompt")
     response = ollama.embed(model="nomic-embed-text", input=query)
     query_embedding = response["embeddings"][0]
 
