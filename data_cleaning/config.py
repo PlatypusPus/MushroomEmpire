@@ -126,9 +126,63 @@ GDPR_COMPLIANCE = {
 # Presidio Analyzer Settings
 PRESIDIO_CONFIG = {
     'language': 'en',
-    'score_threshold': 0.5,  # Minimum confidence to report
+    'score_threshold': 0.6,  # Minimum confidence to report (raised from 0.5 to reduce false positives)
     'entities': None,  # None = detect all, or specify list like ['EMAIL_ADDRESS', 'PHONE_NUMBER']
-    'allow_list': [],  # Terms to ignore (e.g., company names that look like PII)
+    'allow_list': ['l1', 'l2', 'L1', 'L2', 'NA', 'N/A', 'null', 'none'],  # Common non-PII values
+}
+
+# Column Context Filters - Ignore specific entity types based on column name patterns
+# This prevents false positives when column names provide context
+COLUMN_CONTEXT_FILTERS = {
+    # Column name pattern (regex) -> List of entity types to IGNORE in that column
+    r'.*credit.*': ['US_DRIVER_LICENSE', 'US_PASSPORT', 'PERSON'],
+    r'.*rating.*': ['US_DRIVER_LICENSE', 'US_PASSPORT'],
+    r'.*level.*': ['US_DRIVER_LICENSE', 'US_PASSPORT'],
+    r'.*score.*': ['US_DRIVER_LICENSE', 'US_PASSPORT', 'PERSON'],
+    r'.*category.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*status.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*type.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*grade.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*class.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*rank.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*tier.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*segment.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*group.*': ['US_DRIVER_LICENSE', 'PERSON'],
+    r'.*code.*': ['PERSON'],  # Codes are rarely names
+    r'.*id$': ['PERSON'],  # IDs ending in 'id' are rarely names
+    r'.*_id$': ['PERSON'],  # Same for underscore_id
+}
+
+# Value Pattern Exclusions - Ignore values matching these patterns for specific entity types
+# This catches false positives based on the actual detected value format
+EXCLUSION_PATTERNS = {
+    'US_DRIVER_LICENSE': [
+        r'^[a-zA-Z]\d{1,2}$',  # Single letter + 1-2 digits (e.g., l1, l2, A1, B12)
+        r'^[a-zA-Z]{1,2}$',    # 1-2 letters only (e.g., A, AB)
+        r'^level\s*\d+$',      # "level 1", "level 2", etc.
+        r'^tier\s*\d+$',       # "tier 1", "tier 2", etc.
+        r'^grade\s*[a-zA-Z]$', # "grade A", "grade B", etc.
+    ],
+    'US_PASSPORT': [
+        r'^[a-zA-Z]\d{1,2}$',  # Single letter + 1-2 digits
+        r'^[a-zA-Z]{1,2}$',    # 1-2 letters only
+    ],
+    'PERSON': [
+        r'^(admin|user|guest|system|default|test|demo)$',  # Generic usernames
+        r'^[a-zA-Z]\d*$',      # Single letter with optional numbers (A, A1, B2)
+        r'^(yes|no|true|false|y|n|t|f)$',  # Boolean values
+        r'^(male|female|m|f|other)$',  # Gender categories
+        r'^(low|medium|high|good|bad|excellent|poor)$',  # Rating values
+    ],
+    'EMAIL_ADDRESS': [
+        r'^(test|demo|example|sample)@',  # Test emails
+        r'@(test|demo|example|sample)\.',  # Test domains
+    ],
+    'PHONE_NUMBER': [
+        r'^(000|111|222|333|444|555|666|777|888|999)[-\s]',  # Fake phone patterns
+        r'^1{6,}$',  # All 1s
+        r'^0{6,}$',  # All 0s
+    ],
 }
 
 # Custom Recognizers (domain-specific patterns)

@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import hashlib
 import json
+import re
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 from collections import defaultdict
@@ -375,10 +376,14 @@ class DataCleaner:
     ) -> Dict[str, List[Dict]]:
         """
         Detect PII at column and cell level (GPU-accelerated when available)
+        With intelligent filtering for false positives
         
         Returns:
             Dictionary mapping column names to list of detected entities
         """
+        import re
+        from data_cleaning.config import COLUMN_CONTEXT_FILTERS, EXCLUSION_PATTERNS
+        
         pii_detections = defaultdict(list)
         
         # Determine which columns to scan
@@ -417,26 +422,69 @@ class DataCleaner:
             )
             
             if results:
-                # Aggregate by entity type
-                entity_summary = defaultdict(lambda: {'count': 0, 'scores': []})
+                # Aggregate by entity type with filtering
+                entity_summary = defaultdict(lambda: {'count': 0, 'scores': [], 'filtered': 0})
+                filtered_reasons = []
                 
                 for result in results:
-                    entity_summary[result.entity_type]['count'] += 1
-                    entity_summary[result.entity_type]['scores'].append(result.score)
+                    entity_type = result.entity_type
+                    # Extract detected text from original string using start/end positions
+                    detected_text = combined_text[result.start:result.end]
+                    
+                    # ✅ FILTER 1: Column Context Filtering
+                    # Skip if entity type should be ignored based on column name
+                    context_filtered = False
+                    for pattern, ignored_entities in COLUMN_CONTEXT_FILTERS.items():
+                        if re.search(pattern, column.lower()) and entity_type in ignored_entities:
+                            context_filtered = True
+                            entity_summary[entity_type]['filtered'] += 1
+                            if f"column context ({pattern})" not in filtered_reasons:
+                                filtered_reasons.append(f"column context ({pattern})")
+                            break
+                    
+                    if context_filtered:
+                        continue
+                    
+                    # ✅ FILTER 2: Value Pattern Exclusions
+                    # Skip if detected value matches exclusion patterns
+                    pattern_filtered = False
+                    if entity_type in EXCLUSION_PATTERNS:
+                        for exclusion_pattern in EXCLUSION_PATTERNS[entity_type]:
+                            if re.match(exclusion_pattern, detected_text, re.IGNORECASE):
+                                pattern_filtered = True
+                                entity_summary[entity_type]['filtered'] += 1
+                                if f"value pattern ({exclusion_pattern[:20]}...)" not in filtered_reasons:
+                                    filtered_reasons.append(f"value pattern")
+                                break
+                    
+                    if pattern_filtered:
+                        continue
+                    
+                    # ✅ Not filtered - count as valid detection
+                    entity_summary[entity_type]['count'] += 1
+                    entity_summary[entity_type]['scores'].append(result.score)
                 
-                # Store detection results
+                # Store detection results (only non-filtered)
+                detected_types = []
                 for entity_type, info in entity_summary.items():
-                    avg_confidence = np.mean(info['scores'])
-                    pii_detections[column].append({
-                        'entity_type': entity_type,
-                        'count': info['count'],
-                        'avg_confidence': avg_confidence,
-                        'max_confidence': max(info['scores']),
-                        'min_confidence': min(info['scores'])
-                    })
+                    if info['count'] > 0:  # Only include if we have valid (non-filtered) detections
+                        avg_confidence = np.mean(info['scores'])
+                        pii_detections[column].append({
+                            'entity_type': entity_type,
+                            'count': info['count'],
+                            'avg_confidence': avg_confidence,
+                            'max_confidence': max(info['scores']),
+                            'min_confidence': min(info['scores'])
+                        })
+                        detected_types.append(entity_type)
                 
-                detected_types = [d['entity_type'] for d in pii_detections[column]]
-                print(f"✓ Found: {', '.join(detected_types)}")
+                if detected_types:
+                    print(f"✓ Found: {', '.join(detected_types)}")
+                elif any(info['filtered'] > 0 for info in entity_summary.values()):
+                    total_filtered = sum(info['filtered'] for info in entity_summary.values())
+                    print(f"(filtered {total_filtered} false positives: {', '.join(filtered_reasons[:2])})")
+                else:
+                    print("(no PII)")
             else:
                 print("(no PII)")
         
