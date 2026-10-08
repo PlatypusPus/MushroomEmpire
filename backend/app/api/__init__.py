@@ -86,6 +86,14 @@ async def replay_start(event_id: int, step_h: Annotated[int, Query(ge=1, le=24)]
         raise HTTPException(404, f"unknown event {event_id}")
 
 
+@router.get("/replay/{session_id}/alerts")
+def replay_alerts(session_id: str, upto: Annotated[int, Query(ge=0)] = 0) -> list[dict]:
+    """Alert feed: each zone appears on the tick it first crosses the alert threshold (again after it clears)."""
+    if session_id not in replay.sessions:
+        raise HTTPException(404, f"unknown session {session_id}")
+    return replay.alert_feed(session_id, upto)
+
+
 @ws_router.websocket("/ws/replay/{session_id}")
 async def replay_ws(ws: WebSocket, session_id: str, interval_s: float = 1.0, start: int = 0):
     """Pushes {issue_ts, zones:[ZonePayload]} per tick, in order."""

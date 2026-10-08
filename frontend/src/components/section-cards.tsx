@@ -3,13 +3,13 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/comp
 
 export function SectionCards({ payloads, region }: { payloads: ZonePayload[]; region: Region | undefined }) {
   const count = (f: (p: ZonePayload) => boolean) => payloads.filter(f).length
-  const alerts = count((p) => p.severity === "high" || p.severity === "severe")
+  const alerts = count((p) => p.is_alert)
   const unknown = count((p) => p.coverage === "insufficient_data")
   const facilities = payloads
-    .filter((p) => p.severity === "high" || p.severity === "severe")
+    .filter((p) => p.is_alert)
     .reduce((n, p) => n + p.exposure.filter((a) => a.type === "hospital" || a.type === "shelter").length, 0)
   const cards = [
-    { label: "Zones on high or severe alert", value: alerts, foot: `of ${payloads.length} Census places` },
+    { label: "Zones on alert", value: alerts, foot: `of ${payloads.length} Census places, validated alert threshold` },
     { label: "Hospitals and shelters in alerted zones", value: facilities, foot: "potentially exposed, from OSM" },
     { label: "Zones with insufficient data", value: unknown, foot: "unknown, never shown as low risk" },
     { label: "Coverage", value: region?.coverage ?? "...", foot: region?.name ?? "" },

@@ -63,6 +63,16 @@ export interface ZonePayload {
   rank_reason: string
   alert_text: string
   model: string | null
+  is_alert: boolean // probability >= the validated alert threshold
+}
+
+export interface AlertEvent {
+  issue_ts: string
+  zone_id: string
+  alert_text: string
+  probability: number | null
+  severity: Severity | null
+  is_simulated: boolean
 }
 
 export interface Weights {
@@ -177,6 +187,8 @@ export const api = {
     apiFetch<{ zone_id: string; text: string; source: "llm" | "template"; model: string | null; reason: string | null }>(
       `/zones/${zone_id}/briefing${params({ ...q })}`
     ),
+  replayAlerts: (session_id: string, upto: number) =>
+    apiFetch<AlertEvent[]>(`/replay/${session_id}/alerts${params({ upto })}`),
   replayStart: (event_id: number, step_h: number) =>
     apiFetch<{ session_id: string; event_id: number; ticks: string[] }>(
       `/replay/${event_id}/start${params({ step_h })}`,

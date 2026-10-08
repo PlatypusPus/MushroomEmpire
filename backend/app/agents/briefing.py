@@ -6,6 +6,7 @@ Template today; an LLM can replace `render` later, but `check_numbers` still gat
 import re
 from datetime import datetime
 
+from app import calibration
 from app.schemas import RiskOutput
 
 NUM = re.compile(r"\d+(?:[.:]\d+)?")
@@ -20,6 +21,9 @@ def clock(t: datetime) -> str:
 
 def render(zone_name: str, risk: RiskOutput, drivers: list[str]) -> str:
     head = f"{risk.severity.capitalize()} {NOUN} Risk, {zone_name}."
+    if not risk.onset and risk.probability >= calibration.alert_threshold():
+        # likely forecast stays under the mark but the upper band crosses it: an alert with no onset time
+        return f"{head} High-water episode possible in the next {risk.horizon_h} h. Drivers: {' + '.join(drivers)}"
     if not risk.onset:
         return f"{head} No high-water episode expected in the next {risk.horizon_h} h."
     return f"{head} Onset {clock(risk.onset.likely)}, peak {clock(risk.peak.likely)}. Drivers: {' + '.join(drivers)}"

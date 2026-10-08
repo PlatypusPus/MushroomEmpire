@@ -12,6 +12,7 @@ from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from app import calibration
 from app.agents.briefing import brief
 from app.agents.explain import explain
 from app.agents.exposure import exposure
@@ -108,6 +109,7 @@ def run_tick_graph(
             probability=risk.probability, severity=risk.severity, onset=risk.onset, peak=risk.peak,
             drivers_text=drivers, exposure=exp, rank=i, rank_reason=reason,
             alert_text=brief(z["name"], risk, drivers), model=traj.model,
+            is_alert=risk.probability >= calibration.alert_threshold(),
         ))
     for i, (z, exp) in enumerate(unknown, len(payloads) + 1):
         payloads.append(ZonePayload(
