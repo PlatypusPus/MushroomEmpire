@@ -37,7 +37,7 @@ Required deliverables:
 ## 3. Scope
 
 DO:
-- One deep region (a coast we can ground-truth in person), plus an honest second region only if it passes the gate in section 15.
+- One deep region: **South Florida** (SFWMD canal and coastal network, via SF2Bench; see section 15, decision 9). It cannot be ground-truthed in person, so say so. Plus an honest second region only if it passes the gate in section 15.
 - Coverage labels on every region: Validated, Experimental, Simulation, Insufficient data. Unknown is never shown as low risk.
 - Neighbourhood zones with HAND-based depth estimates.
 - Uncertainty windows on onset and peak (quantile or conformal).
@@ -174,7 +174,7 @@ Zone payload shape (proposed), what the frontend renders:
 ```json
 {
   "zone_id": "Z-014",
-  "issue_ts": "2026-07-01T09:00:00+05:30",
+  "issue_ts": "2026-07-01T09:00:00-04:00",
   "coverage": "validated | experimental | simulation | insufficient_data",
   "is_simulated": false,
   "probability": 0.0,
@@ -205,7 +205,7 @@ Component-level contract: any value from a source with `is_simulated=true` rende
 
 ## 11. Data, models and what was found
 
-Verdict: none of the surveyed repos is plug and play for an Indian coast.
+Verdict: none of the surveyed repos is plug and play for an Indian coast. The deep region is now South Florida, whose data source is SF2Bench (Harvard Dataverse file 11275874, 2.0 GiB archive, 15 GB extracted, in `data/raw/sf2bench/`): hourly WATER, RAIN, GATE, PUMP and WELL series per station, 5-year splits S_0 (1985 to 1989) to S_7 (2020 to 2023). The GFF/Kerala work is kept as reference only.
 
 | Resource | Verdict | Use |
 | --- | --- | --- |
@@ -228,10 +228,10 @@ Reusable data sources:
 
 ## 12. Hard problems (decide early)
 
-1. Timing labels. Observed onset and peak labels for Indian coasts are scarce, and satellite maps give extent at one acquisition time. Option A: a real event with gauge or reported timing. Option B: a clearly labelled simulation, with onset and peak error reported as simulator error. Never present simulation scores as real-world performance; never train labels from a simple formula and call it validation.
-2. Event, not tile. Choose a held-out event by distinct flood event and date, then confirm cause (monsoon rain, cyclone, surge) against the Dartmouth list.
+1. Timing labels. SF2Bench gives observed hourly water levels, not observed flooding. Onset and peak labels are therefore derived from stage-exceedance episodes (section 13 protocol), and must be described that way on screen: "high-water episode", not "flood". Any label from a formula is a proxy; never present it as an observed flood. If a notable storm event is used for the holdout, confirm its date and cause independently.
+2. Held-out event or split. Hold out whole chronological blocks as ESL does (for example S_7, 2020 to 2023) and choose a named storm inside it for the demo replay. Confirm cause (rain, surge, structure operations) against an independent source such as the Dartmouth list.
 3. Forecast availability. Archived forecasts may not reach back far enough for the chosen event; check before freezing it.
-4. Local depth. HAND plus a water-level-to-depth mapping per zone is the method for the 20-point geospatial criterion; state the DEM vertical error.
+4. Local depth. HAND plus a water-level-to-depth mapping per zone is the method for the 20-point geospatial criterion; state the DEM vertical error. South Florida is extremely flat, so DEM error can equal flood depth; disclose it. Zone-level HAND, DEM, land use and OSM for South Florida are not yet sourced.
 
 ## 13. Validation rules
 
@@ -254,7 +254,7 @@ Reusable data sources:
 | 6. Demo hardening | Two timed rehearsals, screen-recorded backup, simulated-badge audit on every component, venue tunnel dry run | Two clean runs; recording saved |
 | 7. Extras | CASPIAN transfer view, GDELT panel, destination search | Each behind its own route, visibly separate from the validated core |
 
-Phase 1 first prompt for a coding agent: load the GFF `base.zip` tile metadata, keep only tiles within about 50 km of the Indian coast using a real coastline polygon (not bounding boxes), print tile id, date, lat/lon, distance to coast and distinct-event count, cross-check dates against the Dartmouth list, then stop and show the table. Do not train or download anything over 1 GB.
+Phase 1 first task (South Florida): (a) done, CRS check: station `X COORD`/`Y COORD` are NAD83 Florida State Plane East, US feet (EPSG:2236), see decision 9; (b) choose a station subset and zones, and a chronological holdout; (c) show the station table (id, variable, split, lon/lat, missing-data share) and stop. Do not download anything over 1 GB without asking. The earlier Kerala GFF prompt was completed as a reference run (`backend/scripts/gff_tiles.py`).
 
 ## 15. Conflicts between the source docs and how this file resolves them (decisions, confirm)
 
@@ -266,6 +266,8 @@ Phase 1 first prompt for a coding agent: load the GFF `base.zip` tile metadata, 
 6. Performance target. TRD quoted "under 500 ms on the 2 vCPU box", stale now that compute runs on the laptop. Target: full chain for one zone and one issue time under 500 ms on the laptop, excluding cold start.
 7. Demo flow had a region switch as step 7. Optional, only if decision 1 promotes CASPIAN.
 8. Alert strings in examples (such as the ±20 min windows) are illustrative; real numbers come only from model output.
+
+9. Region switch (user decision, after the Kerala ingestion check): India lacks timed labels in the supplied sources, so the deep region moves to **South Florida**, using SF2Bench (the ESL repo's dataset) for hourly water-level time series and its onset/peak episode protocol. Kerala work (GFF tiles in `data/processed/`) is reference only. SF2Bench: Harvard Dataverse file 11275874, downloaded and md5-verified (0e82b123b27d2aa64d941812ed2cf709). Coordinates: each station's `loc_info.json` has `Latitude`/`Longitude` fields that are NOT usable (all 1,680 S_7 stations map to a 0.1-degree patch when read as State Plane); use `X COORD`/`Y COORD` as EPSG:2236 (Florida East, NAD83, US feet). Evidence: 1,680 of 1,680 S_7 stations convert to lon -81.83..-80.05, lat 25.29..28.50 (inside Florida; the western-zone EPSG:2237 would push east-coast stations into the Atlantic/Gulf shifted 1 degree west). Not confirmed against a published SFWMD metadata page (unverified). Licence and the full variable semantics (units, datum) are unverified. Open: no tide or surge series in SF2Bench; add NOAA if wanted. Zone layers still to source.
 
 ## 16. Demo plan (about 6 minutes, adjust to the slot)
 
@@ -322,15 +324,15 @@ Fewer people: merge A with B, or C with D. Never merge B with C. Critical path: 
 ## 20. Open decisions
 
 1. Hackathon duration and demo slot length? Resolved: 5 to 6 minutes, confirmed by the user.
-2. Which coast is the deep region? Resolved: **Kerala** (southwest coast). GFF ties on raw count (Kerala, Gujarat, Odisha, 2 near-coastal tiles each), but Kerala is the only one where the well-documented outside event and the GFF-labelled tiles fall in the same year: the August 2018 floods (reservoir-release timing, rainfall gauge records, multiple post-event studies); both Kerala GFF tiles are from 2018. Odisha's strong outside cases (IMD-timed cyclone landfalls) are 2013/2019/2021, not its 2015 GFF tiles. Gujarat has no comparable outside case. Transfer region unchanged: Abu Dhabi via CASPIAN's synthetic SLR dataset (Phase 7 extra, see section 15, item 1).
-2a. Which held-out event? **Still open**, narrower now. Candidates are Kerala's two GFF tiles: `76.775E, 8.887N` (post-image 2018-08-09, pre-dates the Aug 15-17 peak) and `76.043E, 10.788N` (window 2018-06-03 to 06-15, an earlier monsoon pulse, not the catastrophic event). Neither is confirmed to capture the event everyone cites (unverified). Next step: check whether CWC/IMD/Kerala SDMA rainfall or Idukki dam release records give hour-level onset and peak for either window.
-3. Real timing labels or a labelled simulation? **Open**, depends on 2a. If no hour-level records are found for either window, fall back to Option B (labelled simulation) for Kerala (section 12, item 1).
+2. Which coast is the deep region? Resolved: **South Florida** (SF2Bench), switched from Kerala because India lacked timed labels in the supplied sources (see section 15, decision 9). Kerala analysis is archived as reference.
+2a. Holdout and demo event. Proposed (user asked for a pick, confirm): station subset = **Miami-Dade + Broward**, box lon -80.55..-80.05, lat 25.1..26.4 (EPSG:2236 X/Y converted), keeping only stations present in S_5, S_6 and S_7: 97 WATER, 37 RAIN, 37 GATE, 13 PUMP (`backend/scripts/sf_subset.py`, output `data/processed/sf_subset_stations.csv`). Missing VALUE share is 0 to 2% for WATER and 0 for RAIN, GATE, PUMP. Chronology: train on S_5 (2010 to 2014), validate on S_6 (2015 to 2019), hold out **S_7 (2020 to 2023)** entirely; the holdout is excluded from training and model selection. Demo replay event: **12 to 13 April 2023** (Fort Lauderdale area). Evidence in our data: `G54_T` (26.09N) shows a 4.9 ft stage rise over 12 to 16 April 2023 and `FT. LAUD_R` has 2.26 (file units) rain over 11 to 14 April with a 1.68 hourly peak, and 30 of 97 subset WATER gauges rose over 1 ft. Alternates found in S_7: 8 to 9 Nov 2020 (widespread), 3 to 4 June 2022, 15 to 17 Nov 2023. The event's date, size and cause are from general knowledge and have not been checked against an independent source (unverified).
+3. Real timing labels or a labelled simulation? Resolved by data: stage-exceedance episodes from observed hourly water levels (a proxy, labelled as such). A simulation is needed only for the zone depth layer if no flood extent data is found.
 4. Does CASPIAN pass the Phase 7 promotion gate (section 15, item 1)?
 5. Demo tick cadence (section 15, item 3)?
 6. LLM provider and key for the Briefing agent? Answered: none yet, build template-only briefing (same output format) and add an LLM behind it later.
 7. Team size, which decides how lanes merge? Answered: 3 to 4 people, one lane each (section 17).
 8. Does the `coastguard` role authenticate through the tunnel (`pg_hba.conf` unread)?
 9. Is a no-auth, single-tenant demo acceptable for the audience?
-10. How far back does the Open-Meteo previous-runs archive go for Kerala? Not yet checked. It limits which event can be replayed.
+10. Verify the SF2Bench licence, units and datum. Specifically RAIN looks too small to be inches: yearly gauge totals are about 4 to 12 in file units against roughly 60 in a typical Miami-Dade/Broward year, so the unit or aggregation (for example a mean rather than a sum) is unknown. Do not print any rainfall number such as "85 mm" until this is resolved. Also and decide whether to add NOAA tide or surge data. Open.
 
-Resolved side note: GFF has 9 real India-only near-coastal tiles after removing Sri Lanka, Myanmar and Bangladesh bounding-box spillover (the "21" in section 11 is the uncorrected box count): Kerala 2, Gujarat 2, Odisha 2, Tamil Nadu 1, Andhra Pradesh 1, Maharashtra 1.
+Reference note from the Kerala run: GFF had 8 India-only near-coastal tiles within 50 km in our measurement (notes said 9); both Kerala tiles had GFF `flooding=False`. Not used further.
