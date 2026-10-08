@@ -16,7 +16,7 @@ void main(){
   float d = dot(N, ${SUN});
   float k = smoothstep(-0.18, 0.35, d);
   vec3 dayRaw = texture2D(day, uv).rgb;
-  vec3 dayTex = vec3(dot(dayRaw, vec3(0.3, 0.59, 0.11)));  // theme is neutral grayscale: no colour
+  vec3 dayTex = dayRaw;  // natural colour; only the lights and atmosphere stay neutral
   vec3 dayC = dayTex * (0.12 + 1.15 * pow(max(d, 0.0), 0.8));
   vec3 nightTex = vec3(dot(texture2D(night, uv).rgb, vec3(0.3, 0.59, 0.11)));
   vec3 nightC = nightTex * 2.6 + vec3(0.012);  // white city lights over a faint neutral ambient
