@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import litellm
 
+litellm.suppress_debug_info = True  # no "Give Feedback" banner on every failed local call
+
 from app.config import settings
 
 SYSTEM = (
