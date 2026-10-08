@@ -382,6 +382,7 @@ dependencies = [
     { name = "shap", version = "0.52.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "shapely" },
     { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "tqdm" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -410,6 +411,7 @@ requires-dist = [
     { name = "shap" },
     { name = "shapely" },
     { name = "sqlalchemy", extras = ["asyncio"] },
+    { name = "tqdm", specifier = ">=4.70.1" },
     { name = "uvicorn", extras = ["standard"] },
 ]
 

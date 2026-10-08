@@ -13,6 +13,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from sqlalchemy import insert, text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -72,6 +73,7 @@ async def main(hourly=True):
         sid = {(s["var"], s["name"]): s["id"] for s in stations}
         df = pd.read_parquet(ROOT / "sf_hourly.parquet")
         t0, n = time.time(), 0
+        bar = tqdm(total=len(df), unit="row", unit_scale=True, desc="dynamic_features", mininterval=5)
         async with eng.connect() as c:
             raw = await c.get_raw_connection()
             drv = raw.driver_connection
@@ -83,9 +85,9 @@ async def main(hourly=True):
                 await drv.copy_records_to_table("dynamic_features", records=recs,
                     columns=["station_id", "ts", "availability_ts", "value", "confidence", "interpolated_value", "is_simulated"])
                 n += len(g)
-                if n % 1_000_000 < len(g):
-                    print(f"  {n:,} rows, {time.time() - t0:.0f}s", flush=True)
+                bar.update(len(g))
             await raw.commit() if hasattr(raw, "commit") else None
+        bar.close()
         print(f"dynamic_features {n:,} rows in {time.time() - t0:.0f}s")
     await eng.dispose()
 

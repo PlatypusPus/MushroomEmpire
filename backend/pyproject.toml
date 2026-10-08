@@ -19,6 +19,7 @@ dependencies = [
   "aiosqlite>=0.22.1",
   "pyarrow>=25.0.1",
   "requests>=2.34.2",
+  "tqdm>=4.70.1",
 ]
 # ponytail: tensorflow (CASPIAN) added only if the Phase 7 gate passes
 
