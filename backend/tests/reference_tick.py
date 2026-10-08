@@ -3,6 +3,7 @@ can be proved to produce identical payloads; do not import from app code."""
 
 from datetime import datetime
 
+from app import calibration
 from app.agents.briefing import brief
 from app.agents.explain import explain_zone
 from app.agents.peak import attach_peak
@@ -42,6 +43,7 @@ def reference_tick(snap: Snapshot, issue_ts: datetime, weights: Weights | None =
             probability=risk.probability, severity=risk.severity, onset=risk.onset, peak=risk.peak,
             drivers_text=drivers, reasons=reasons, explanation=sentence, exposure=exp, rank=i, rank_reason=reason,
             alert_text=brief(z["name"], risk, drivers), model=traj.model,
+            is_alert=risk.probability >= calibration.alert_threshold(),
         ))
     # unknown is never low risk: ranked after, flagged, no probability
     for i, (z, exp) in enumerate(unknown, len(out) + 1):

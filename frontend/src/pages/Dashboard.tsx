@@ -1,6 +1,7 @@
 import * as React from "react"
 
-import { useEvents, useRegionZones, useRegions, useReplay, useTick } from "@/api/hooks"
+import { useAlertFeed, useEvents, useRegionZones, useRegions, useReplay, useTick } from "@/api/hooks"
+import { AlertFeed } from "@/components/alert-feed"
 import { AppShell } from "@/components/app-shell"
 import { RankingQueue } from "@/components/ranking-queue"
 import { RiskMap } from "@/components/risk-map"
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const replay = useReplay(eventId, STEP_H)
   const ticks = replay.data?.ticks ?? []
   const payloads = useTick(eventId, ticks[tick], weights)
+  const alerts = useAlertFeed(replay.data?.session_id, tick)
 
   const names = React.useMemo(() => new Map((zones.data ?? []).map((z) => [z.id, z.name])), [zones.data])
   const event = events.data?.find((e) => e.id === eventId)
@@ -40,7 +42,10 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
           <RiskMap zones={zones.data ?? []} payloads={rows} />
-          <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} />
+          <div className="flex flex-col gap-4">
+            <AlertFeed feed={alerts.data ?? []} names={names} now={ticks[tick]} />
+            <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} />
+          </div>
         </div>
         <div className="px-4 lg:px-6">
           <RankingQueue payloads={rows} names={names} />

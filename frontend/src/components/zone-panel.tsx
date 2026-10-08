@@ -85,8 +85,18 @@ export function ZonePanel({ zone, name }: { zone: ZonePayload | undefined; name:
           </div>
         )}
         <div>
-          <div className="mb-1 text-xs text-muted-foreground">Why (top drivers)</div>
-          {zone.drivers_text.length ? (
+          <div className="mb-1 text-xs text-muted-foreground">Why</div>
+          {zone.explanation && <p className="mb-2 text-sm">{zone.explanation}</p>}
+          {zone.reasons?.length ? (
+            <ol className="flex flex-col gap-1 text-sm">
+              {zone.reasons.map((r) => (
+                <li key={r.phrase} className="flex items-center justify-between gap-2">
+                  <span>{r.phrase}</span>
+                  <Badge variant={r.strength === "main reason" ? "default" : "outline"}>{r.strength}</Badge>
+                </li>
+              ))}
+            </ol>
+          ) : zone.drivers_text.length ? (
             <ol className="list-decimal pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ol>
           ) : (
             <div className="text-sm text-muted-foreground">No usable gauge data for this zone.</div>

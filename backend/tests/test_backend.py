@@ -82,6 +82,14 @@ def test_briefing_rejects_invented_numbers():
         check_numbers(text + " + 85 mm rain", "Zone A", r, ["water rising fast"])
 
 
+def test_alert_without_onset_says_possible_not_expected():
+    from app import calibration
+
+    r = derive(traj([-0.5] * 6)).model_copy(update={"probability": max(calibration.alert_threshold(), 0.5)})
+    text = brief("Zone A", r, ["water rising fast"])
+    assert "possible" in text and "No high-water" not in text
+
+
 def test_ranking_moves_with_weights():
     snap = synthetic_snapshot()
     zones = [(p.zone_id, p) for p in run_tick(snap, T0)]
@@ -118,6 +126,12 @@ def test_api_end_to_end_and_replay_ws():
     assert c.get(f"/api/ranking{q}&exposure=1&probability=0").status_code == 200
     sess = c.post("/api/replay/999/start?step_h=3").json()
     assert len(sess["ticks"]) == 3
+    feed = c.get(f"/api/replay/{sess['session_id']}/alerts?upto=2").json()
+    assert [f["issue_ts"] for f in feed] == sorted((f["issue_ts"] for f in feed), reverse=True)  # newest first
+    assert len({f["zone_id"] for f in feed if f["issue_ts"] == feed[-1]["issue_ts"]}) == len(
+        [f for f in feed if f["issue_ts"] == feed[-1]["issue_ts"]])  # a zone fires once per crossing
+    assert all(f["zone_id"] != "C" for f in feed)  # unknown zones never alert
+    assert c.get("/api/replay/nope/alerts").status_code == 404
     with c.websocket_connect(f"/ws/replay/{sess['session_id']}?interval_s=0") as ws:
         frames = [ws.receive_json() for _ in sess["ticks"]]
     assert len(frames[-1]["zones"]) == 3

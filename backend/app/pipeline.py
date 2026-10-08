@@ -24,6 +24,7 @@ from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+from app import calibration
 from app.agents.briefing import brief
 from app.agents.explain import explain_zone
 from app.agents.exposure import exposure
@@ -166,6 +167,7 @@ def assemble_node(s: TickState) -> dict:
             probability=risk.probability, severity=risk.severity, onset=risk.onset, peak=risk.peak,
             drivers_text=drivers, reasons=reasons, explanation=sentence, exposure=r["exp"], rank=i, rank_reason=reason,
             alert_text=brief(z["name"], risk, drivers), model=traj.model,
+            is_alert=risk.probability >= calibration.alert_threshold(),  # Lane B's validated alert rule
         ))
     # unknown is never low risk: ranked after, flagged, no probability
     for i, r in enumerate([r for r in s["ordered"] if r["fv"] is None], len(out) + 1):

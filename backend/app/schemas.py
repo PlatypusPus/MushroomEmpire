@@ -136,6 +136,7 @@ class ZonePayload(Strict):
     rank_reason: str
     alert_text: str
     model: str | None
+    is_alert: bool = False  # probability >= the validated alert threshold (calibration.alert_threshold)
 
 
 class Weights(Strict):

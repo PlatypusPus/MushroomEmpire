@@ -12,6 +12,17 @@ export function useZoneBriefing(zone_id: string | undefined, q: SnapshotQuery, e
   })
 }
 
+/** Alerts that have fired up to the current replay tick, newest first. */
+export function useAlertFeed(session_id: string | undefined, upto: number) {
+  return useQuery({
+    queryKey: ["alerts", session_id, upto],
+    queryFn: () => api.replayAlerts(session_id!, upto),
+    enabled: session_id != null,
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+}
+
 /** Starts a replay session once per event and step; returns its tick timestamps. */
 export function useReplay(event_id: number, step_h: number) {
   return useQuery({
