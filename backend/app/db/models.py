@@ -161,3 +161,14 @@ class RankingRun(Base):
     issue_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     weights_json: Mapped[dict] = mapped_column(JSON)
     ranked_zone_ids_json: Mapped[list] = mapped_column(JSON)
+
+
+class ZoneStation(Base):
+    """Which gauges serve which zone: inside the zone, else nearest within the 10 km coverage rule."""
+
+    __tablename__ = "zone_stations"
+    zone_id: Mapped[str] = mapped_column(ForeignKey("zones.id"), primary_key=True)
+    station_id: Mapped[int] = mapped_column(ForeignKey("stations.id"), primary_key=True)
+    var: Mapped[str] = mapped_column(String(8))
+    rank: Mapped[int] = mapped_column(Integer)  # 1 = nearest of its variable
+    distance_km: Mapped[float] = mapped_column(Float)  # to the zone centroid; 0 if the gauge is inside the zone
