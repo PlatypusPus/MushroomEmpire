@@ -174,3 +174,15 @@ class ZoneStation(Base):
     var: Mapped[str] = mapped_column(String(8))
     rank: Mapped[int] = mapped_column(Integer)  # 1 = nearest of its variable
     distance_km: Mapped[float] = mapped_column(Float)  # to the zone centroid; 0 if the gauge is inside the zone
+
+
+class TidePrediction(Base):
+    """NOAA astronomical tide prediction (hourly, metres NAVD). Known in advance, so it is legitimate input at issue time.
+
+    ts is aligned to the SF2Bench clock (NOAA GMT shifted by -5 h, the assumed EST offset, ROOT_CONTEXT 2f/2i) and labelled UTC.
+    """
+
+    __tablename__ = "tide_predictions"
+    noaa_id: Mapped[str] = mapped_column(String(8), primary_key=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    value: Mapped[float | None] = mapped_column(Float)

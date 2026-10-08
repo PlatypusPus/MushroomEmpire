@@ -15,7 +15,7 @@ PROC = Path(__file__).resolve().parents[2] / "data" / "processed"
 
 
 async def main():
-    parts = {"validation": PROC / "metrics_validation_v2.json", "spatial": PROC / "metrics_spatial_v2.json", "features": PROC / "metrics_feature_study.json", "horizons": PROC / "metrics_horizons_v2.json"}
+    parts = {"validation": PROC / "metrics_validation_v2.json", "spatial": PROC / "metrics_spatial_v2.json", "features": PROC / "metrics_feature_study.json", "horizons": PROC / "metrics_horizons_v2.json", "explain_audit": PROC / "metrics_explain_audit.json", "review": PROC / "metrics_review.json", "peak": PROC / "metrics_peak.json", "peak_eval": PROC / "metrics_peak_eval.json"}
     eng = create_async_engine(settings.database_url)
     async with eng.begin() as c:
         row = (await c.execute(text("select id, metrics_json from model_runs where model_name = 'lightgbm-quantile' and version = 'v2'"))).first()

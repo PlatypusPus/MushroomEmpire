@@ -14,7 +14,8 @@ from langgraph.graph import END, StateGraph
 
 from app import calibration
 from app.agents.briefing import brief
-from app.agents.explain import explain
+from app.agents.explain import explain_zone
+from app.agents.peak import attach_peak
 from app.agents.exposure import exposure
 from app.agents.forecast import forecast
 from app.agents.ingestion import ingest
@@ -36,7 +37,7 @@ class ZoneState(TypedDict, total=False):
     fv: FeatureVector | None
     traj: DepthTrajectory
     risk: RiskOutput
-    drivers: list[str]
+    drivers: tuple  # (phrases, reasons, sentence) from explain_zone
     exp: list[ExposureItem]
 
 
@@ -51,10 +52,10 @@ def build_zone_graph(snap: Snapshot, issue_ts: datetime):
         return {"traj": forecast(s["fv"])}
 
     def n_derive(s: ZoneState) -> dict:
-        return {"risk": derive(s["traj"])}
+        return {"risk": attach_peak(derive(s["traj"]), s["traj"], s["fv"], snap)}
 
     def n_explain(s: ZoneState) -> dict:
-        return {"drivers": explain(s["traj"].drivers)}
+        return {"drivers": explain_zone(s["traj"].drivers, s["fv"], s["risk"])}
 
     def n_exposure(s: ZoneState) -> dict:
         return {"exp": exposure(s["zone_id"], snap.assets)}
@@ -100,14 +101,14 @@ def run_tick_graph(
     by_id = {k[0]["id"]: k for k in known}
     payloads = []
     for i, (zid, _, reason) in enumerate(order, 1):
-        z, fv, traj, risk, drivers, exp = by_id[zid]
+        z, fv, traj, risk, (drivers, reasons, sentence), exp = by_id[zid]
         simulated = fv.is_simulated or z["is_simulated"] or snap.event["is_simulated"]
         payloads.append(ZonePayload(
             zone_id=zid, issue_ts=issue_ts,
             coverage="simulation" if simulated else region["coverage"],
             is_simulated=simulated,
             probability=risk.probability, severity=risk.severity, onset=risk.onset, peak=risk.peak,
-            drivers_text=drivers, exposure=exp, rank=i, rank_reason=reason,
+            drivers_text=drivers, reasons=reasons, explanation=sentence, exposure=exp, rank=i, rank_reason=reason,
             alert_text=brief(z["name"], risk, drivers), model=traj.model,
             is_alert=risk.probability >= calibration.alert_threshold(),
         ))

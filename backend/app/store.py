@@ -23,6 +23,7 @@ class Snapshot:
     rows: list[dict] = field(default_factory=list)  # {station_id, ts, availability_ts, value, is_simulated}
     assets: list[dict] = field(default_factory=list)  # {zone_id, kind, name, confidence}
     model_runs: list[dict] = field(default_factory=list)
+    tides: list[dict] = field(default_factory=list)  # predicted tide {noaa_id, ts, value}: astronomical, known in advance
 
     def zone(self, zone_id: str) -> dict:
         return next(z for z in self.zones if z["id"] == zone_id)
@@ -77,6 +78,7 @@ SQL = {
                where station_id = any(:ids) and ts >= :a and ts <= :b""",
     "assets": """select a.zone_id, a.kind, coalesce(a.name, a.kind) as name, a.confidence
                  from exposure_assets a join zones z on z.id = a.zone_id where z.region_id = :r""",
+    "tides": "select noaa_id, ts, value from tide_predictions where ts >= :a and ts <= :b order by noaa_id, ts",
     "model_runs": "select model_name, version, region_id::text as region_id, metrics_json from model_runs where region_id = :r",
 }
 
@@ -110,4 +112,5 @@ async def from_db(event_id: int) -> Snapshot:
             rows=await q("rows", ids=sorted({x["id"] for x in stations}), a=ev["start_ts"] - LOOKBACK, b=ev["end_ts"]),
             assets=await q("assets", r=r),
             model_runs=await q("model_runs", r=r),
+            tides=await q("tides", a=ev["start_ts"] - timedelta(days=2), b=ev["end_ts"] + timedelta(days=3)),
         )

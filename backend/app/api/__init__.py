@@ -136,7 +136,7 @@ async def zone_risk(zone_id: str, issue_ts: datetime | None = None, event_id: in
 @router.get("/zones/{zone_id}/explanation")
 async def zone_explanation(zone_id: str, issue_ts: datetime | None = None, event_id: int | None = None) -> dict:
     p = await payload(zone_id, event_id, issue_ts)
-    return {"zone_id": zone_id, "drivers_text": p.drivers_text, "model": p.model}
+    return {"zone_id": zone_id, "drivers_text": p.drivers_text, "reasons": [r.model_dump() for r in p.reasons], "explanation": p.explanation, "model": p.model}
 
 
 @router.get("/zones/{zone_id}/exposure")
