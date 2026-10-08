@@ -1,0 +1,62 @@
+"""Graph parity + chat endpoint. LLM calls are faked: no daemon, no network."""
+
+import litellm
+import pytest
+from fastapi.testclient import TestClient
+from test_backend import T0, synthetic_snapshot
+
+from app import api
+from app.agents.graph import run_tick_graph, run_zone
+from app.llm.client import ChatResult, LLMUnavailable
+from app.llm.client import chat as real_chat
+from app.main import app
+from app.orchestrator import run_tick
+
+
+def test_graph_matches_run_tick():
+    snap = synthetic_snapshot()
+    want = [p.model_dump() for p in run_tick(snap, T0)]
+    got = [p.model_dump() for p in run_tick_graph(snap, T0)]
+    assert got == want
+
+
+def test_graph_zone_unknown_ends_after_ingest():
+    out = run_zone(synthetic_snapshot(), "C", T0)  # C has no gauge
+    assert out.get("fv") is None and "risk" not in out and out["exp"] == []
+
+
+def test_chat_endpoint(monkeypatch):
+    async def fake(messages, *, system=None):
+        assert messages[-1]["content"] == "hi"
+        return ChatResult(text="hello", model="ollama/qwen3:4b")
+
+    monkeypatch.setattr(api, "llm_chat", fake)
+    r = TestClient(app).post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"message": "hello", "model": "ollama/qwen3:4b"}
+
+
+def test_chat_rejects_empty():
+    c = TestClient(app)
+    assert c.post("/api/chat", json={"messages": []}).status_code == 422
+    assert c.post("/api/chat", json={"messages": [{"role": "user", "content": "  "}]}).status_code == 422
+
+
+def test_chat_llm_down_is_503(monkeypatch):
+    async def down(messages, *, system=None):
+        raise LLMUnavailable("daemon down")
+
+    monkeypatch.setattr(api, "llm_chat", down)
+    r = TestClient(app).post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 503
+
+
+def test_client_wraps_transport_errors(monkeypatch):
+    async def boom(**kwargs):
+        raise ConnectionError("refused")
+
+    monkeypatch.setattr(litellm, "acompletion", boom)
+    with pytest.raises(LLMUnavailable):
+        import asyncio
+
+        asyncio.run(real_chat([{"role": "user", "content": "hi"}]))
