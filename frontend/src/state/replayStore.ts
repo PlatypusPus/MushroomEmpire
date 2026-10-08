@@ -22,8 +22,8 @@ interface ReplayState {
 }
 
 export const useReplayStore = create<ReplayState>((set) => ({
-  mode: "live", // the dashboard opens on the live official hazards; the model replays are one click away
-  eventId: 5, // Hurricane Nicole, Nov 2022 (ROOT_CONTEXT 20.2a)
+  mode: "replay", // the dashboard opens on the storm replay; live official hazards are one click away
+  eventId: 8, // 2023 Nov Extreme Rain Event: last option in the event picker
   tick: 0,
   playing: false,
   selectedZone: null,

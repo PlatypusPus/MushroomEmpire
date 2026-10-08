@@ -42,22 +42,24 @@ export function DashboardMode({ events }: { events: CoastEvent[] }) {
           </NavigationMenuItem>
         </NavigationMenuList>
       </NavigationMenu>
-      <label className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Event</span>
-        <select
-          value={eventId}
-          onChange={(e) => setEvent(+e.target.value)}
-          className="max-w-72 rounded-md border bg-background px-2 py-1 text-sm"
-          aria-label="Storm to replay"
-        >
-          {events.map((ev) => (
-            <option key={ev.id} value={ev.id}>
-              {ev.name}
-            </option>
-          ))}
-          {!events.some((ev) => ev.id === eventId) && <option value={eventId}>Event {eventId}</option>}
-        </select>
-      </label>
+      {mode === "replay" && (
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Event</span>
+          <select
+            value={eventId}
+            onChange={(e) => setEvent(+e.target.value)}
+            className="max-w-72 rounded-md border bg-background px-2 py-1 text-sm"
+            aria-label="Storm to replay"
+          >
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.name}
+              </option>
+            ))}
+            {!events.some((ev) => ev.id === eventId) && <option value={eventId}>Event {eventId}</option>}
+          </select>
+        </label>
+      )}
     </div>
   )
 }

@@ -110,7 +110,7 @@ class Prefs(BaseModel):
     email_alerts: bool
 
 
-TX_COOKIE = "kadal_oauth"
+TX_COOKIE = "shroomcast_oauth"
 
 
 def _redirect_uri(provider: str) -> str:
@@ -250,7 +250,7 @@ async def test_email(user: CurrentUser) -> dict:
     if wait > 0:
         raise HTTPException(429, f"wait {int(wait) + 1}s before sending another test")
     _last_test[user.id] = now
-    status = await send_email(user.email, "KADAL test email", "This is a test email from KADAL. Flood alerts for the places you follow will arrive at this address.")
+    status = await send_email(user.email, "SHROOMCAST test email", "This is a test email from SHROOMCAST. Flood alerts for the places you follow will arrive at this address.")
     return {"status": status, "to": user.email}
 
 
@@ -291,7 +291,7 @@ def plan_live(alerts: dict[str, list[dict]] | None, user_zones: dict[int, list[t
                 out.append({"user_id": uid, "kind": "live", "zone_id": None, "key": f"live:{county}:{al['event']}:{al['effective']}",
                             "title": f"[Official NWS] {al['event']} for {county} County",
                             "body": f"{al['headline'] or al['event']}{until}.\nYour followed places in {county}: {', '.join(sorted(mine))}.\n"
-                                    "This is an official National Weather Service warning. It is separate from the KADAL flood forecast."})
+                                    "This is an official National Weather Service warning. It is separate from the SHROOMCAST flood forecast."})
     return out
 
 
