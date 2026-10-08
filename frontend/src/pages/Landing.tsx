@@ -1,5 +1,6 @@
 import "@fontsource-variable/montserrat"
-import { Link } from "react-router"
+import { useState } from "react"
+import { useNavigate } from "react-router"
 import { SpinningGlobe } from "@/components/spinning-globe"
 
 // Starfield (CSS) behind a spinning night-lights Earth (three.js).
@@ -11,13 +12,20 @@ const STARS = Array.from({ length: 90 }, (_, i) => ({
 }))
 
 export default function Landing() {
+  const nav = useNavigate()
+  const [leaving, setLeaving] = useState(false)
+  const enter = () => {
+    if (leaving) return
+    setLeaving(true)
+    setTimeout(() => nav("/dashboard"), matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 900)
+  }
   return (
-    <main className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-background text-white">
+    <main className={`relative flex h-screen w-screen items-center justify-center overflow-hidden bg-background text-white transition-opacity duration-[900ms] ease-in ${leaving ? "opacity-0" : "opacity-100"}`}>
       {STARS.map((s, i) => (
         <span key={i} className="absolute rounded-full bg-white" style={{ left: s.left, top: s.top, width: s.size, height: s.size, opacity: s.opacity }} />
       ))}
 
-      <SpinningGlobe className="absolute left-[72%] top-1/2 h-[120vh] w-[170vh] -translate-x-1/2 -translate-y-1/2" />
+      <SpinningGlobe className={`absolute transition-transform duration-[900ms] ease-in ${leaving ? "scale-[1.6]" : "scale-100"} left-[72%] top-1/2 h-[120vh] w-[170vh] -translate-x-1/2 -translate-y-1/2`} />
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/70" />
 
@@ -27,9 +35,9 @@ export default function Landing() {
         </h1>
         <div className="mt-7 h-px w-16 bg-white/30" />
         <p className="mt-7 text-[11px] font-medium tracking-[0.5em] text-zinc-300/80 md:text-sm">CLEAR FORESIGHT FOR RISING WATERS</p>
-        <Link to="/dashboard" className="mt-14 rounded-full border border-white/30 bg-white/5 px-9 py-3 text-[11px] font-medium tracking-[0.35em] text-white/85 backdrop-blur-sm transition hover:border-white/70 hover:bg-white/15 hover:text-white">
+        <button type="button" onClick={enter} className="mt-14 rounded-full border border-white/30 bg-white/5 px-9 py-3 text-[11px] font-medium tracking-[0.35em] text-white/85 backdrop-blur-sm transition hover:border-white/70 hover:bg-white/15 hover:text-white">
           ENTER DASHBOARD
-        </Link>
+        </button>
       </div>
     </main>
   )
