@@ -104,3 +104,28 @@ graph LR
 * An insufficient-data zone never reaches the model (it could call it low risk); a ranking answer that calls an unknown zone "low risk" is rejected.
 * `source` is `llm` or `template`; `reason` says why a draft was rejected. Intent routing is rule-based because a 3B model routes unreliably.
 * Tested with a fake model (routing, grounded accept, invented-number / forbidden-word / contradiction fallback, LLM down, endpoint). Not yet run against a live Ollama model.
+
+## Live hazard context (`app/context.py`, `GET /api/context`, `GET /api/zones/{id}/context`)
+
+Official alerts, cyclones and a weather-model outlook for South Florida, plus ONE transparent hazard-context level. It sits NEXT TO the
+flood model, never inside its probability: there is no archive of past alerts here to calibrate an uplift, and replay events are historical.
+
+| Source | What we use | Refresh |
+|---|---|---|
+| NWS alerts API (`api.weather.gov/alerts/active?area=FL`) | flood, coastal flood, flash flood, tropical storm, hurricane and storm-surge products for Miami-Dade (SAME 012086) and Broward (012011); only `Actual` messages that have not ended or been cancelled | 2 min |
+| NHC `CurrentStorms.json` | Atlantic cyclones: class, intensity, distance and heading relative to the region; other basins are only counted | 10 min |
+| NHC Atlantic RSS | latest bulletin titles and links, official domain only | 10 min |
+| Open-Meteo forecast | rain next 24 h and 72 h, max gust, min pressure; labelled "weather model, not our flood model" | 15 min |
+
+**Level** (0 none, 1 advisory or statement, 2 watch, 3 warning, 4 emergency) = the highest of the county's active alerts and a cyclone-distance rule
+(within 300 km: 3; within 800 km and heading toward: 2; within 1,500 km: 1). Both the event ordering and the distances are heuristics, not calibrated.
+**Agreement flag** (only when a live `model_probability` is supplied): `agree_warning`, `model_with_watch`, `model_only`, `official_only`,
+`official_watch_only`, `none`, `no_model_data`, `context_unavailable`. The two signals are shown together, never multiplied.
+
+Safety rules: unknown is never none (if the alert feed is down or older than 10 minutes the level is `null`, with the last recorded level shown only as
+recorded); all fetched text is cleaned and length-capped, RSS links must be on nhc.noaa.gov, and only structured fields reach the assistant (event names, counts,
+distances). Failures keep the last good copy per source and are reported in `sources` and `partial`. The assistant answers alert and cyclone questions from this
+context (template fallback; it cannot say "no warnings" when the data is unavailable).
+
+Tests use trimmed REAL responses saved in `tests/fixtures` (alerts, storms, RSS). Open items: no UI yet; WPC excessive-rainfall categories and NHC wind-speed
+probabilities are not added (data endpoints not verified); the SFWMD live gauge feed, which real-time forecasting actually needs, is separate and still missing.

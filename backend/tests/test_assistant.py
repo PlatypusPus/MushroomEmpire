@@ -21,7 +21,7 @@ def ask(q, zone_id=None):
 
 
 def fake(text):
-    async def f(messages, *, system=None):
+    async def f(messages, *, system=None, **kwargs):
         return ChatResult(text=text, model="fake")
     return f
 
@@ -57,7 +57,7 @@ def test_invented_number_or_forbidden_word_falls_back_to_the_template(bad, monke
 
 
 def test_llm_down_falls_back_to_the_template(monkeypatch):
-    async def down(messages, *, system=None):
+    async def down(messages, *, system=None, **kwargs):
         raise LLMUnavailable("daemon down")
     monkeypatch.setattr(A, "chat", down)
     r = ask("Which zones should we prioritise?")
@@ -88,3 +88,32 @@ def test_endpoint(monkeypatch):
     r = c.post("/api/assistant", json={"question": "Which zones should we prioritise?", "event_id": 997}).json()
     assert r["intent"] == "top" and r["source"] in ("llm", "template")
     assert c.post("/api/assistant", json={"question": "  ", "event_id": 997}).status_code == 422
+
+
+def test_stream_matches_non_stream_and_accepts_weights(monkeypatch):
+    import json as _json
+
+    monkeypatch.setattr(A, "chat", fake("ok"))
+    replay._snaps[997] = synthetic_snapshot()
+    c = TestClient(app)
+    body = {"question": "What is the risk in Zone A?", "event_id": 997,
+            "weights": {"probability": 0.3, "severity": 0.2, "urgency": 0.25, "exposure": 0.1, "vulnerable": 0.15, "uncertainty": 0.0}}
+    r = c.post("/api/assistant/stream", json=body)
+    assert r.status_code == 200, r.text
+    tokens, statuses, done = [], [], None
+    for line in r.text.splitlines():
+        if line.startswith("data:"):
+            evt = _json.loads(line[5:].strip())
+            if "token" in evt:
+                tokens.append(evt["token"])
+            if "status" in evt:
+                statuses.append(evt["status"])
+            if evt.get("done"):
+                done = evt
+    text = "".join(tokens)
+    assert statuses, "expected progress status events before tokens"
+    assert text, "no tokens streamed"
+    assert done and done["intent"] == "zone" and done["source"] in ("llm", "template")
+    want = c.post("/api/assistant", json=body).json()["answer"]
+    assert text == want
+    assert c.post("/api/assistant/stream", json={"question": "  ", "event_id": 997}).status_code == 422

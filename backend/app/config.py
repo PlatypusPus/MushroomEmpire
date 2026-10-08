@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_timeout_s: float = Field(default=180, gt=0)  # first call loads the model into memory
     llm_temperature: float = Field(default=0.2, ge=0, le=2)
+    llm_chat_timeout_s: float = Field(default=60, gt=0)  # per-question budget for the grounded assistant
+    llm_chat_max_tokens: int = Field(default=220, gt=0)  # answers are capped at 4 short sentences
+    llm_brief_max_tokens: int = Field(default=120, gt=0)  # briefings are 2 to 3 sentences, under 60 words
 
 
 settings = Settings()

@@ -32,8 +32,8 @@ async def payloads(event_id: int | None, issue_ts: datetime | None, weights: Wei
     return replay.tick(eid, ts, weights)
 
 
-async def payload(zone_id: str, event_id: int | None, issue_ts: datetime | None) -> ZonePayload:
-    for p in await payloads(event_id, issue_ts):
+async def payload(zone_id: str, event_id: int | None, issue_ts: datetime | None, weights: Weights | None = None) -> ZonePayload:
+    for p in await payloads(event_id, issue_ts, weights):
         if p.zone_id == zone_id:
             return p
     raise HTTPException(404, f"unknown zone {zone_id}")
@@ -152,19 +152,42 @@ async def zone_alert(zone_id: str, issue_ts: datetime | None = None, event_id: i
 
 
 _briefs: dict[tuple, dict] = {}
+_briefs_failed_at: dict[tuple, float] = {}  # template fallbacks cool down instead of refiring the LLM on every select
+_briefs_inflight: dict[tuple, "asyncio.Task"] = {}  # one GPU call per key: concurrent selects share it
+BRIEF_RETRY_S = 300
 
 
 @router.get("/zones/{zone_id}/briefing")
-async def zone_briefing(zone_id: str, issue_ts: datetime | None = None, event_id: int | None = None) -> dict:
+async def zone_briefing(
+    zone_id: str,
+    weights: Annotated[Weights, Depends()],
+    issue_ts: datetime | None = None,
+    event_id: int | None = None,
+) -> dict:
     """Local-LLM narration of one zone, number-checked; falls back to the template (`source` says which)."""
+    import time
+
     from app.agents.briefing_llm import llm_brief
 
     eid, snap = await active(event_id)
-    p = await payload(zone_id, eid, issue_ts)
+    p = await payload(zone_id, eid, issue_ts, weights)
     key = (eid, zone_id, p.issue_ts)
-    if key not in _briefs or _briefs[key]["source"] != "llm":  # retry template fallbacks, keep good answers
-        _briefs[key] = await llm_brief(p, snap.zone(zone_id)["name"])
-    return _briefs[key]
+    if key in _briefs and _briefs[key]["source"] == "llm":
+        return _briefs[key]  # good answers are kept
+    if key in _briefs and time.monotonic() - _briefs_failed_at.get(key, 0) < BRIEF_RETRY_S:
+        return _briefs[key]  # recent fallback: do not refire the model on every reselect
+    task = _briefs_inflight.get(key)
+    if task is None:
+        task = asyncio.create_task(llm_brief(p, snap.zone(zone_id)["name"]))
+        _briefs_inflight[key] = task
+    try:
+        res = await task
+    finally:
+        _briefs_inflight.pop(key, None)
+    _briefs[key] = res
+    if res["source"] != "llm":
+        _briefs_failed_at[key] = time.monotonic()
+    return res
 
 
 @router.get("/pipeline")
@@ -205,6 +228,7 @@ class AssistantRequest(BaseModel):
     zone_id: str | None = None  # the zone currently selected in the UI, used when the question names none
     issue_ts: datetime | None = None
     event_id: int | None = None
+    weights: Weights | None = None  # dashboard slider weights: same key = same replay.tick cache hit
 
 
 @router.post("/assistant")
@@ -215,8 +239,128 @@ async def assistant(req: AssistantRequest) -> dict:
     if not req.question.strip():
         raise HTTPException(422, "question must not be empty")
     eid, snap = await active(req.event_id)
-    ps = list(await payloads(eid, req.issue_ts))
-    return await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id)
+    ps = list(await payloads(eid, req.issue_ts, req.weights))
+    from app import context
+
+    return await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id, context.get_context)
+
+
+@router.get("/context")
+async def live_context(refresh: bool = False) -> dict:
+    """Live official alerts (NWS), active cyclones (NHC), weather-model outlook and one hazard-context level. Never part of the replay."""
+    from app import context
+
+    return await context.get_context(force=refresh)
+
+
+@router.get("/zones/{zone_id}/context")
+async def zone_context(zone_id: str, model_probability: float | None = None, event_id: int | None = None) -> dict:
+    """County-level slice of the live context for a zone. Pass `model_probability` (from a LIVE forecast) to get the agreement flag;
+    replay events are historical, so the agreement is only computed when you supply it."""
+    from app import calibration, context
+
+    _, snap = await active(event_id)
+    z = next((z for z in snap.zones if z["id"] == zone_id), None)
+    if z is None:
+        raise HTTPException(404, f"unknown zone {zone_id}")
+    ctx = await context.get_context()
+    c = ctx["counties"].get(z.get("county")) or {"level": ctx["level"], "label": ctx["label"], "drivers": []}
+    ag = context.agreement(c["level"], model_probability, calibration.alert_threshold()) if model_probability is not None else None
+    return {"zone_id": zone_id, "county": z.get("county"), "level": c["level"], "label": c["label"], "drivers": c["drivers"], "agreement": ag,
+            "cyclones": ctx["cyclones"], "partial": ctx["partial"], "fetched_at": ctx["fetched_at"], "live": True}
+
+
+@router.post("/assistant/stream")
+async def assistant_stream(req: AssistantRequest):
+    """Token stream (SSE) for the grounded assistant.
+
+    Runs the same route -> facts -> compose (+ guards, template fallback) as
+    POST /api/assistant, then streams the final guarded answer in word chunks.
+    Chunking after the guard (instead of streaming raw LLM tokens) keeps the
+    number/forbidden-word checks intact. Events: {"status": str} progress,
+    {"token": str} answer chunks, then
+    {"done": true, "model", "intent", "zone_id", "source"}, or {"error": str}.
+    """
+    import re
+
+    from app import assistant as asst
+
+    if not req.question.strip():
+        raise HTTPException(422, "question must not be empty")
+
+    async def events():
+        try:
+            yield f"data: {json.dumps({'status': 'loading zone data'})}\n\n"
+            eid, snap = await active(req.event_id)
+            ps = list(await payloads(eid, req.issue_ts, req.weights))
+            try:
+                preview = asst.route({"question": req.question, "zones": snap.zones, "zone_id": req.zone_id})
+                zone_name = next((z["name"] for z in snap.zones if z["id"] == preview.get("zone_id")), None)
+                label = zone_name or "ranking"
+                yield f"data: {json.dumps({'status': f'found {label} · phrasing'})}\n\n"
+            except Exception:
+                yield f"data: {json.dumps({'status': 'phrasing'})}\n\n"
+            res = await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id)
+        except HTTPException as e:
+            yield f"data: {json.dumps({'error': e.detail})}\n\n"
+            return
+        except Exception as e:  # snapshot/pipeline failure: SSE error, not a broken stream
+            yield f"data: {json.dumps({'error': str(e)[:200]})}\n\n"
+            return
+        answer = res.get("answer", "")
+        # Word chunks that concatenate back to the exact answer.
+        for chunk in re.findall(r"\S+\s*|\s+", answer):
+            yield f"data: {json.dumps({'token': chunk})}\n\n"
+        yield f"data: {json.dumps({'done': True, 'model': res.get('model'), 'intent': res.get('intent'), 'zone_id': res.get('zone_id'), 'source': res.get('source')})}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream")
+
+
+@router.post("/assistant/stream")
+async def assistant_stream(req: AssistantRequest):
+    """Token stream (SSE) for the grounded assistant.
+
+    Runs the same route -> facts -> compose (+ guards, template fallback) as
+    POST /api/assistant, then streams the final guarded answer in word chunks.
+    Chunking after the guard (instead of streaming raw LLM tokens) keeps the
+    number/forbidden-word checks intact. Events: {"status": str} progress,
+    {"token": str} answer chunks, then
+    {"done": true, "model", "intent", "zone_id", "source"}, or {"error": str}.
+    """
+    import re
+
+    from app import assistant as asst
+    from app import context
+
+    if not req.question.strip():
+        raise HTTPException(422, "question must not be empty")
+
+    async def events():
+        try:
+            yield f"data: {json.dumps({'status': 'loading zone data'})}\n\n"
+            eid, snap = await active(req.event_id)
+            ps = list(await payloads(eid, req.issue_ts, req.weights))
+            try:
+                preview = asst.route({"question": req.question, "zones": snap.zones, "zone_id": req.zone_id})
+                zone_name = next((z["name"] for z in snap.zones if z["id"] == preview.get("zone_id")), None)
+                label = zone_name or "ranking"
+                yield f"data: {json.dumps({'status': f'found {label} · phrasing'})}\n\n"
+            except Exception:
+                yield f"data: {json.dumps({'status': 'phrasing'})}\n\n"
+            res = await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id, context.get_context)
+        except HTTPException as e:
+            yield f"data: {json.dumps({'error': e.detail})}\n\n"
+            return
+        except Exception as e:  # snapshot/pipeline failure: SSE error, not a broken stream
+            yield f"data: {json.dumps({'error': str(e)[:200]})}\n\n"
+            return
+        answer = res.get("answer", "")
+        # Word chunks that concatenate back to the exact answer.
+        for chunk in re.findall(r"\S+\s*|\s+", answer):
+            yield f"data: {json.dumps({'token': chunk})}\n\n"
+        yield f"data: {json.dumps({'done': True, 'model': res.get('model'), 'intent': res.get('intent'), 'zone_id': res.get('zone_id'), 'source': res.get('source')})}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream")
 
 
 @router.get("/ranking")
