@@ -86,7 +86,6 @@ async def main(hourly=True):
                     columns=["station_id", "ts", "availability_ts", "value", "confidence", "interpolated_value", "is_simulated"])
                 n += len(g)
                 bar.update(len(g))
-            await raw.commit() if hasattr(raw, "commit") else None
         bar.close()
         print(f"dynamic_features {n:,} rows in {time.time() - t0:.0f}s")
     await eng.dispose()
