@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { NavMain } from "@/components/nav-main"
+import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +18,10 @@ const NAV = [
   { title: "Assistant", url: "/chat", icon: <MessageSquareIcon /> },
   { title: "Model honesty", url: "/honesty", icon: <ScaleIcon /> },
 ]
+
+// Demo placeholder: no auth in this build, so the account menu is
+// decorative (Avatar falls back to initials on the empty src).
+const DEMO_USER = { name: "Admin", email: "demo@kadal.local", avatar: "" }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -35,9 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={NAV} />
       </SidebarContent>
       <SidebarFooter>
-        <p className="px-2 text-xs text-muted-foreground">
-          Coastal high-water intelligence, South Florida. Recommends only; never dispatches.
-        </p>
+        <NavUser user={DEMO_USER} />
       </SidebarFooter>
     </Sidebar>
   )
