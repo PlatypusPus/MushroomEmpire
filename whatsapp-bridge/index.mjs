@@ -1,4 +1,4 @@
-// KADAL WhatsApp bridge: links ONE phone (yours) through WhatsApp Web via Baileys and exposes a tiny
+// SHROOMCAST WhatsApp bridge: links ONE phone (yours) through WhatsApp Web via Baileys and exposes a tiny
 // localhost HTTP API the backend calls to message users who verified their number on the Account page.
 //   GET  /status                      -> { connected, me }
 //   POST /send  { to, text }          -> { ok: true } | 4xx/5xx { error }
@@ -45,7 +45,7 @@ async function qrPage(res) {
       ? `<h1>Scan with WhatsApp</h1><p>On your phone: WhatsApp &gt; Settings &gt; Linked devices &gt; Link a device.</p>${await QR.toString(lastQr, { type: "svg", margin: 2, width: 320 })}`
       : "<h1>Waiting for WhatsApp…</h1>"
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" })
-  res.end(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="${connected ? 60 : 5}"><title>KADAL WhatsApp</title>
+  res.end(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="${connected ? 60 : 5}"><title>SHROOMCAST WhatsApp</title>
 <body style="font-family:system-ui;text-align:center;padding:2rem;background:#fff;color:#111">${body}</body>`)
 }
 

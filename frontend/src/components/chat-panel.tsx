@@ -23,7 +23,7 @@ import { cn } from "cn"
 const GREETING: ChatMessage = {
   role: "assistant",
   content:
-    "Hi! KADAL here, Ask away!",
+    "Hi! SHROOMCAST here, Ask away!",
 }
 
 const EXAMPLES = [

@@ -1,6 +1,7 @@
 import "@fontsource-variable/montserrat"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
+import { useTheme } from "next-themes"
 import { SpinningGlobe } from "@/components/spinning-globe"
 
 // Starfield (CSS) behind a spinning night-lights Earth (three.js).
@@ -13,7 +14,12 @@ const STARS = Array.from({ length: 90 }, (_, i) => ({
 
 export default function Landing() {
   const nav = useNavigate()
+  const { setTheme } = useTheme()
   const [leaving, setLeaving] = useState(false)
+  // The landing is a night scene: lock dark mode here so the dashboard opens dark too.
+  useEffect(() => {
+    setTheme("dark")
+  }, [setTheme])
   const enter = () => {
     if (leaving) return
     setLeaving(true)

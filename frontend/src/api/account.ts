@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 // Accounts client. The session token (our own short-lived JWT, never the Google one) lives in localStorage.
-const KEY = "kadal.token"
+const KEY = "shroomcast.token"
 
 export interface Me { id: number; email: string; name: string; email_alerts: boolean; zone_ids: string[]; whatsapp: string | null; whatsapp_available: boolean }
 export interface Delivery { id: number; kind: "replay" | "live"; zone_id: string | null; title: string; body: string; created_at: string; status: string }

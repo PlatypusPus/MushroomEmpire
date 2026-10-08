@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="KADAL", lifespan=lifespan)
+app = FastAPI(title="SHROOMCAST", lifespan=lifespan)
 app.include_router(router, prefix="/api")
 app.include_router(accounts.router, prefix="/api")
 app.include_router(ws_router)

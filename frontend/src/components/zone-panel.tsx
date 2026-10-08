@@ -1,9 +1,10 @@
-import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type Mitigation, type TimeWindow, type ZonePayload } from "@/api/client"
+import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type Mitigation, type Region, type TimeWindow, type ZonePayload } from "@/api/client"
 import { useLiveMitigation, useMitigation, useZoneBriefing } from "@/api/hooks"
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChatPanel } from "@/components/chat-panel"
 
 const TYPE_LABEL: Record<string, string> = {
   hospital: "Hospitals", fire_station: "Fire stations", police: "Police", shelter: "Potential shelters",
@@ -48,6 +49,28 @@ function windowSub(w: TimeWindow | null) {
   if (!w) return undefined
   const day = (t: string) => t.slice(0, 10) !== w.likely.slice(0, 10)
   return `${clock(w.earliest, day(w.earliest))} to ${clock(w.latest, day(w.latest))}`
+}
+
+/** Global replay stats, rendered as a 4-column strip on top of the Place details card. */
+function OverviewStrip({ payloads, region }: { payloads: ZonePayload[]; region: Region | undefined }) {
+  const count = (f: (p: ZonePayload) => boolean) => payloads.filter(f).length
+  const alerts = count((p) => p.is_alert)
+  const unknown = count((p) => p.coverage === "insufficient_data")
+  const facilities = payloads
+    .filter((p) => p.is_alert)
+    .reduce((n, p) => n + p.exposure.filter((a) => a.type === "hospital" || a.type === "shelter").length, 0)
+  const items = [
+    { label: "Places on alert", value: `${alerts}/${payloads.length}` },
+    { label: "Hospitals and shelters", value: String(facilities) },
+    { label: "insufficient data", value: String(unknown) },
+  ]
+  return (
+    <div className="grid grid-cols-4 gap-3 border-b pb-3">
+      {items.map((c) => (
+        <Stat key={c.label} label={c.label} value={c.value} />
+      ))}
+    </div>
+  )
 }
 
 function Facilities({ items }: { items: ExposureItem[] }) {
@@ -140,7 +163,7 @@ export function LivePlacePanel({ lat, lon }: { lat: number; lon: number }) {
   const d = m.data
   const color = d && d.level !== "unknown" ? SEVERITY_COLOR[d.level] : UNKNOWN_COLOR
   return (
-    <Card>
+    <Card className="shrink-0">
       <CardHeader>
         <CardTitle className="text-xl">{d?.name ?? "Place"}</CardTitle>
         <CardDescription>{d?.county ? `${d.county} County · ` : ""}What to do now, based on official warnings</CardDescription>
@@ -162,70 +185,101 @@ export function LivePlacePanel({ lat, lon }: { lat: number; lon: number }) {
   )
 }
 
-export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean }) {
+export function ZonePanel({ zone, name, tunable = false, payloads, region }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean; payloads?: ZonePayload[]; region?: Region }) {
   if (!zone) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Place details</CardTitle>
-          <CardDescription>Click a place on the map to see its forecast, why, and nearby facilities.</CardDescription>
-        </CardHeader>
+      <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+        <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
+          <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
+            <TabsList variant="line">
+              <TabsTrigger value="details">Place Details</TabsTrigger>
+              <TabsTrigger value="chat">Chat</TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="details" className="min-h-0 flex-1 overflow-y-auto p-4">
+            <CardHeader>
+              <CardDescription>Click a place on the map to see its forecast, why, and nearby facilities.</CardDescription>
+            </CardHeader>
+            {payloads && (
+              <CardContent>
+                <OverviewStrip payloads={payloads} region={region} />
+              </CardContent>
+            )}
+          </TabsContent>
+          <TabsContent value="chat" keepMounted className="flex min-h-0 flex-1 flex-col overflow-hidden px-(--card-spacing) pb-(--card-spacing) [&_[data-slot=card-content]]:px-0">
+            <ChatPanel className="flex min-h-0 flex-1 flex-col" />
+          </TabsContent>
+        </Tabs>
       </Card>
     )
   }
   const unknown = zone.coverage === "insufficient_data"
   const color = zone.severity ? SEVERITY_COLOR[zone.severity] : UNKNOWN_COLOR
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
-        <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
-        <CardAction className="flex gap-1">
-          <Badge variant="outline" className="capitalize">{zone.coverage === "insufficient_data" ? "not enough data" : zone.coverage.replace("_", " ")}</Badge>
-          {zone.is_simulated && <Badge variant="destructive">Simulation</Badge>}
-        </CardAction>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {!unknown && (
-          <div className="grid grid-cols-4 gap-3">
-            <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />
-            <Stat label="How bad" value={zone.severity ?? "n/a"} color={color} />
-            <Stat label="Starts" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
-            <Stat label="Worst at" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
-          </div>
-        )}
-        <Summary zone={zone} tunable={tunable} color={color} />
-        <Tabs defaultValue="why">
-          <TabsList>
-            <TabsTrigger value="why">Why</TabsTrigger>
-            <TabsTrigger value="todo">What to do</TabsTrigger>
-            <TabsTrigger value="facilities">Facilities ({zone.exposure.length})</TabsTrigger>
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
+        <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
+          <TabsList variant="line">
+            <TabsTrigger value="details">Place Details</TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
           </TabsList>
-          <TabsContent value="why" className="pt-2">
-            {zone.reasons?.length ? (
-              <ul className="flex flex-col gap-1.5 text-sm">
-                {zone.reasons.map((r) => (
-                  <li key={r.phrase} className="flex items-center justify-between gap-2">
-                    <span>{r.phrase}</span>
-                    <Badge variant={r.strength === "main reason" ? "default" : "outline"} className="shrink-0">{r.strength}</Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : zone.drivers_text.length ? (
-              <ul className="list-disc pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">There is no working water sensor near this place, so we do not know the risk.</p>
+        </div>
+        <TabsContent value="details" className="min-h-0 flex-1 overflow-y-auto">
+          <CardHeader>
+            <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
+            <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
+            <CardAction className="flex gap-1">
+              <Badge variant="outline" className="capitalize">{zone.coverage === "insufficient_data" ? "not enough data" : zone.coverage.replace("_", " ")}</Badge>
+              {zone.is_simulated && <Badge variant="destructive">Simulation</Badge>}
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 pt-6">
+            {payloads && <OverviewStrip payloads={payloads} region={region} />}
+            {!unknown && (
+              <div className="grid grid-cols-4 gap-3">
+                <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />
+                <Stat label="How bad" value={zone.severity ?? "n/a"} color={color} />
+                <Stat label="Starts" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
+                <Stat label="Worst at" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
+              </div>
             )}
-            {zone.model && <p className="mt-2 text-[11px] text-muted-foreground">Model {zone.model}</p>}
-          </TabsContent>
-          <TabsContent value="todo" className="pt-2">
-            <WhatToDo zone={zone} />
-          </TabsContent>
-          <TabsContent value="facilities" className="pt-2">
-            <Facilities items={zone.exposure} />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+            <Summary zone={zone} tunable={tunable} color={color} />
+            <Tabs defaultValue="why">
+              <TabsList>
+                <TabsTrigger value="why">Why</TabsTrigger>
+                <TabsTrigger value="todo">What to do</TabsTrigger>
+                <TabsTrigger value="facilities">Facilities ({zone.exposure.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="why" className="pt-2">
+                {zone.reasons?.length ? (
+                  <ul className="flex flex-col gap-1.5 text-sm">
+                    {zone.reasons.map((r) => (
+                      <li key={r.phrase} className="flex items-center justify-between gap-2">
+                        <span>{r.phrase}</span>
+                        <Badge variant={r.strength === "main reason" ? "default" : "outline"} className="shrink-0">{r.strength}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                ) : zone.drivers_text.length ? (
+                  <ul className="list-disc pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">There is no working water sensor near this place, so we do not know the risk.</p>
+                )}
+                {zone.model && <p className="mt-2 text-[11px] text-muted-foreground">Model {zone.model}</p>}
+              </TabsContent>
+              <TabsContent value="todo" className="pt-2">
+                <WhatToDo zone={zone} />
+              </TabsContent>
+              <TabsContent value="facilities" className="pt-2">
+                <Facilities items={zone.exposure} />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </TabsContent>
+        <TabsContent value="chat" keepMounted className="flex min-h-0 flex-1 flex-col overflow-hidden px-(--card-spacing) pb-(--card-spacing) [&_[data-slot=card-content]]:px-0">
+          <ChatPanel className="flex min-h-0 flex-1 flex-col" />
+        </TabsContent>
+      </Tabs>
     </Card>
   )
 }

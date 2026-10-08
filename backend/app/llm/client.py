@@ -15,7 +15,7 @@ litellm.suppress_debug_info = True  # no "Give Feedback" banner on every failed 
 from app.config import settings
 
 SYSTEM = (
-    "You are the KADAL assistant for coastal flood response. "
+    "You are the SHROOMCAST assistant for coastal flood response. "
     "Be concise and specific. If you state any number, it must come from "
     "data the user gave you in this conversation; never invent one. "
     "Mark anything simulated as simulated."

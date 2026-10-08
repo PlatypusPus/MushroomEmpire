@@ -991,6 +991,63 @@ function MapZoomControl({
     )
 }
 
+function MapAutoResize() {
+    const map = useMap()
+
+    useEffect(() => {
+        let cancelled = false
+
+        function invalidate() {
+            if (cancelled) return
+            map.invalidateSize()
+            // The MapLibre GL basemap keeps its own canvas size; make sure it
+            // follows the Leaflet container after an invalidation.
+            map.eachLayer((layer: unknown) => {
+                try {
+                    ;(layer as { getMaplibreMap?: () => { resize?: () => void } })
+                        .getMaplibreMap?.()
+                        ?.resize?.()
+                } catch {
+                    // ignore layers without a GL map
+                }
+            })
+        }
+
+        // First paint can happen mid sidebar animation or before layout
+        // settles, so invalidate on the next frame plus delayed retries.
+        const raf = requestAnimationFrame(invalidate)
+        const timers = [setTimeout(invalidate, 150), setTimeout(invalidate, 500)]
+
+        // Container resizes (sidebar collapse, container-query breakpoint
+        // switches) do not fire a window resize, so observe the container.
+        // Debounced: during a sidebar slide the observer fires every frame,
+        // and invalidating mid-animation reloads tiles and GL canvases each
+        // time (visible flicker). One trailing invalidation after layout
+        // settles is enough.
+        let settleTimer: ReturnType<typeof setTimeout> | undefined
+        const ro = new ResizeObserver(() => {
+            clearTimeout(settleTimer)
+            settleTimer = setTimeout(invalidate, 180)
+        })
+        ro.observe(map.getContainer())
+
+        window.addEventListener("resize", invalidate)
+        window.addEventListener("orientationchange", invalidate)
+
+        return () => {
+            cancelled = true
+            cancelAnimationFrame(raf)
+            clearTimeout(settleTimer)
+            timers.forEach(clearTimeout)
+            ro.disconnect()
+            window.removeEventListener("resize", invalidate)
+            window.removeEventListener("orientationchange", invalidate)
+        }
+    }, [map])
+
+    return null
+}
+
 function MapFullscreenControl({
     position = "top-1 right-1",
     className,
@@ -1728,6 +1785,7 @@ function useDebounceLoadingState(delay = 200) {
 
 export {
     Map,
+    MapAutoResize,
     MapCircle,
     MapCircleMarker,
     MapControlContainer,

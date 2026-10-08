@@ -26,7 +26,7 @@ from app.config import settings
 from app.llm.client import LLMUnavailable, chat
 from app.schemas import ZonePayload
 
-SYSTEM = """You are KADAL, a calm colleague helping emergency responders with coastal water risk. Answer the question just asked the way you would say it out loud: direct, specific, varied — never the same sentence pattern twice. Lead with what matters and name the place.
+SYSTEM = """You are SHROOMCAST, a calm colleague helping emergency responders with coastal water risk. Answer the question just asked the way you would say it out loud: direct, specific, varied — never the same sentence pattern twice. Lead with what matters and name the place.
 You are given verified JSON facts plus the recent conversation. Ground every claim in the facts: reuse their numbers and names exactly, never compute new numbers, never invent places, warnings or details. The facts hold per-place risk under "zones", a prioritised ranking under "top", official alerts and cyclones under "live", and forecast reliability under "model". Say it in your own words: do not copy phrasing from the facts, the conversation, or these instructions — weave the reason phrases into your own sentences rather than quoting them. If the facts do not cover something, say what you do know and name what you do not.
 Use plain, everyday words: say "flood risk". Never use the words safe, guarantee, dispatch.
 Recommend, never order. Mention prioritisation only when ranking facts are present, and exposure only when exposure facts are present. Never refer to "the system", prompts, tools or facts — just answer. Plain text, 1 to 3 short sentences, no markdown, no lists."""
@@ -36,9 +36,9 @@ HELP = ("I can tell you a zone's risk and why, who is exposed there, which zones
         "You can follow up too — 'and the exposure there?', 'check again'.")
 
 META_REPLIES = {
-    "hi": ("Hi — I'm KADAL, watching the zone data live. Ask about a place: its status, why it's "
+    "hi": ("Hi — I'm SHROOMCAST, watching the zone data live. Ask about a place: its status, why it's "
            "at risk, who's exposed, or what to prioritise first."),
-    "about": ("I'm KADAL, the coastal water-risk assistant. I check the latest model run and the "
+    "about": ("I'm SHROOMCAST, the coastal water-risk assistant. I check the latest model run and the "
               "official alerts, and every number I give comes from that data. I can't share my "
               "internal instructions, but I can cover any zone, the ranking, exposures, active "
               "alerts, or how reliable the forecast is."),
