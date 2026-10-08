@@ -9,6 +9,12 @@ import { useReplayStore } from "@/state/replayStore"
 
 const LIGHT_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
 const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+// no-internet fallback (demo venue Wi-Fi): plain background, our zone polygons still draw on top
+const OFFLINE_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: "bg", type: "background", paint: { "background-color": "#1f2937" } }],
+}
 const SOURCE_ID = "coastguard-zones"
 
 const fill: maplibregl.ExpressionSpecification = [
@@ -36,6 +42,7 @@ function toGeoJSON(zones: Zone[], payloads: ZonePayload[]): GeoJSON.FeatureColle
 export function RiskMap({ zones, payloads }: { zones: Zone[]; payloads: ZonePayload[] }) {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const mapRef = React.useRef<MLMap | null>(null)
+  const offline = React.useRef(false) // true once the online basemap failed; stay on the built-in style
   const dataRef = React.useRef<GeoJSON.FeatureCollection>(toGeoJSON(zones, payloads))
   const { resolvedTheme } = useTheme()
   const selected = useReplayStore((s) => s.selectedZone)
@@ -62,7 +69,14 @@ export function RiskMap({ zones, payloads }: { zones: Zone[]; payloads: ZonePayl
     })
     mapRef.current = map
     map.addControl(new maplibregl.NavigationControl(), "top-right")
-    map.on("load", addLayers)
+    map.on("style.load", addLayers) // fires for the first style and after every setStyle (theme, offline)
+    map.on("error", (e) => {
+      // basemap style unreachable: swap to the built-in style once, instead of an empty map
+      if (!map.isStyleLoaded() && !offline.current && String(e.error?.message ?? "").match(/fetch|network|style/i)) {
+        offline.current = true
+        map.setStyle(OFFLINE_STYLE)
+      }
+    })
     // one handler for the whole map: a zone selects it, anywhere else (sea, outside the region) deselects
     map.on("click", (e: MapMouseEvent) => {
       const hit = map.getLayer("zones-fill") ? map.queryRenderedFeatures(e.point, { layers: ["zones-fill"] }) : []
@@ -92,8 +106,7 @@ export function RiskMap({ zones, payloads }: { zones: Zone[]; payloads: ZonePayl
   React.useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    map.setStyle(isDark ? DARK_STYLE : LIGHT_STYLE)
-    map.once("idle", addLayers)
+    if (!offline.current) map.setStyle(isDark ? DARK_STYLE : LIGHT_STYLE) // layers come back via "style.load"
   }, [isDark, addLayers])
 
   return (

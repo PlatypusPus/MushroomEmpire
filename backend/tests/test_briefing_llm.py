@@ -52,3 +52,17 @@ def test_insufficient_data_never_calls_model(monkeypatch):
     monkeypatch.setattr(briefing_llm, "chat", None)  # would crash if called
     p = payload(probability=None, severity=None, onset=None, peak=None, coverage="insufficient_data")
     assert asyncio.run(briefing_llm.llm_brief(p, "X"))["text"] == "Insufficient data, risk unknown."
+
+
+def test_briefing_uses_the_non_thinking_brief_model(monkeypatch):
+    seen = {}
+
+    async def fake_chat(messages, system=None, **kwargs):
+        seen.update(kwargs)
+        return ChatResult(text="High water likely in Miami from 3:00 PM, 78% chance.", model=kwargs.get("model"))
+
+    monkeypatch.setattr(briefing_llm, "chat", fake_chat)
+    out = asyncio.run(briefing_llm.llm_brief(payload(), "Miami"))
+    from app.config import settings
+
+    assert out["source"] == "llm" and seen.get("model") == settings.llm_brief_model

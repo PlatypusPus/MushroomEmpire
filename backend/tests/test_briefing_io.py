@@ -46,7 +46,8 @@ def test_prompt_is_minimal_and_status_conditioned():
     # one causal field, no triple telling; fallback text and rank boilerplate stay server-side
     assert "reasons" in q and "drivers" not in q and "explanation" not in q
     assert "alert_text" not in q and "rank" not in q and "timing_reliability" not in q
-    assert "model" not in q and "as_of" not in q and "horizon_h" not in q
+    assert "model" not in q and "as_of" not in q
+    assert q["horizon_h"] == 24  # the one boilerplate kept: the rules cite "next 24 hours", so 24 must ground
     assert len(json.dumps(q)) < len(json.dumps(p))  # strictly smaller than the full facts
     # no-episode prompts carry no times the rules forbid
     from datetime import datetime, timezone

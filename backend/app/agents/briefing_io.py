@@ -75,7 +75,7 @@ def briefing_prompt(p: ZonePayload, zone_name: str) -> dict:
     (labels are added server-side, never by the model).
     """
     status = _status(p)
-    d: dict = {"zone_name": zone_name, "status": status, "severity": p.severity}
+    d: dict = {"zone_name": zone_name, "status": status, "severity": p.severity, "horizon_h": HORIZON_H}
     if p.probability is not None:
         d["probability_pct"] = round(p.probability * 100)
     if status == "episode_expected":
@@ -102,7 +102,7 @@ def briefing_prompt(p: ZonePayload, zone_name: str) -> dict:
 
 def prompt_allowed_numbers(inp: dict) -> set[str]:
     """Grounding set matching briefing_prompt: every number the model may print."""
-    bits = [inp.get("zone_name"), inp.get("probability_pct")]
+    bits = [inp.get("zone_name"), inp.get("probability_pct"), inp.get("horizon_h")]
     for k in ("onset", "peak"):
         if inp.get(k) is not None:
             bits.append(inp[k])

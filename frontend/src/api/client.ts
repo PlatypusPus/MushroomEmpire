@@ -90,7 +90,40 @@ export interface Metrics {
   model: string
   version: string
   region_id: string
-  metrics: Record<string, number>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metrics: Record<string, any> // nested: by_lead, validation, peak_eval, review, ... (see Lane B's model_runs row)
+}
+
+export interface LiveAlert {
+  event: string
+  level: number
+  severity: string
+  certainty: string
+  effective: string
+  ends: string | null
+  headline: string
+}
+export interface LiveCyclone {
+  id: string
+  name: string
+  classification: string
+  intensity_kt: number | null
+  distance_km: number | null
+  heading_toward_region: boolean | null
+}
+export interface LiveContext {
+  live: boolean
+  note: string
+  fetched_at: string
+  level: number
+  label: string
+  heuristic_note: string
+  alerts: Record<string, LiveAlert[]>
+  cyclones: LiveCyclone[]
+  forecast: { source: string; rain_next_24h_mm?: number; rain_next_72h_mm?: number; max_gust_next_48h_kmh?: number } | null
+  bulletins: { title: string; published: string; link: string }[]
+  sources: Record<string, { ok: boolean; usable: boolean; age_s: number | null; error: string | null }>
+  partial: string[]
 }
 
 export interface ChatMessage {
@@ -196,6 +229,7 @@ export const api = {
       `/replay/${event_id}/start${params({ step_h })}`,
       { method: "POST" }
     ),
+  context: () => apiFetch<LiveContext>("/context"),
   metrics: (region_id: string, event_id?: number) =>
     apiFetch<Metrics[]>(`/models/${region_id}/metrics${params({ event_id })}`),
   chat: (messages: ChatMessage[], system?: string) =>
@@ -262,24 +296,25 @@ export interface AssistantResult {
   intent: string | null
   zone_id: string | null
   source: string | null
+  tools: string[] | null
 }
 
 /** Token stream for POST /api/assistant/stream (SSE, grounded).
- * Sends one question naming the place each time (e.g.
- * "What is the status at Fort Lauderdale?") plus the dashboard's current
- * event/issue_ts/weights so the answer reuses the already-computed tick
- * cache and matches the ranking on screen. The server routes to the
- * agents' ZonePayload outputs, number-checks the answer and streams the
- * guarded text in word chunks. Resolves with intent/zone/source metadata. */
+ * Sends the question plus recent conversation (so follow-ups like "check
+ * again" resolve) and the dashboard's current event/issue_ts/weights so the
+ * answer reuses the already-computed tick cache and matches the ranking on
+ * screen. The server plans which agents to consult, number-checks the answer
+ * and streams the guarded text in word chunks. Resolves with
+ * intent/zone/source/tools metadata. */
 export async function streamAssistant(
   question: string,
   onToken: (token: string) => void,
-  opts: { event_id?: number; issue_ts?: string; weights?: Weights; signal?: AbortSignal; onStatus?: (status: string) => void } = {}
+  opts: { event_id?: number; issue_ts?: string; weights?: Weights; messages?: ChatMessage[]; signal?: AbortSignal; onStatus?: (status: string) => void } = {}
 ): Promise<AssistantResult> {
   const res = await fetch("/api/assistant/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, event_id: opts.event_id, issue_ts: opts.issue_ts, weights: opts.weights }),
+    body: JSON.stringify({ question, event_id: opts.event_id, issue_ts: opts.issue_ts, weights: opts.weights, messages: opts.messages }),
     signal: opts.signal,
   })
   if (!res.ok || !res.body) {
@@ -295,7 +330,7 @@ export async function streamAssistant(
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buf = ""
-  const out: AssistantResult = { model: null, intent: null, zone_id: null, source: null }
+  const out: AssistantResult = { model: null, intent: null, zone_id: null, source: null, tools: null }
   for (;;) {
     const { done, value } = await reader.read()
     if (done) break
@@ -314,6 +349,7 @@ export async function streamAssistant(
           intent?: string | null
           zone_id?: string | null
           source?: string | null
+          tools?: string[] | null
         }
         if (typeof evt.token === "string") onToken(evt.token)
         else if (typeof evt.status === "string") opts.onStatus?.(evt.status)
@@ -323,6 +359,7 @@ export async function streamAssistant(
           out.intent = evt.intent ?? null
           out.zone_id = evt.zone_id ?? null
           out.source = evt.source ?? null
+          out.tools = evt.tools ?? null
         }
       }
     }

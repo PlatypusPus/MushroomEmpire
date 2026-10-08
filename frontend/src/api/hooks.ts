@@ -13,6 +13,11 @@ export function useZoneBriefing(zone_id: string | undefined, q: SnapshotQuery & 
   })
 }
 
+/** Live NWS/NHC hazard context. Refreshes every 5 min; never part of the replay or the model. */
+export function useLiveContext() {
+  return useQuery({ queryKey: ["live-context"], queryFn: api.context, refetchInterval: 5 * 60 * 1000, retry: 0 })
+}
+
 /** Alerts that have fired up to the current replay tick, newest first. */
 export function useAlertFeed(session_id: string | undefined, upto: number) {
   return useQuery({

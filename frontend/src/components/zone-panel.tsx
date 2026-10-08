@@ -10,6 +10,7 @@ function Briefing({ zone }: { zone: ZonePayload }) {
   const { eventId, playing, weights } = useReplayStore()
   const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts, ...weights }, !playing)
   if (playing) return <div className="text-xs text-muted-foreground">Briefing pauses while the replay plays.</div>
+  const duplicate = b.data?.source === "template" && b.data.text === zone.alert_text
   return (
     <div>
       <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -18,7 +19,18 @@ function Briefing({ zone }: { zone: ZonePayload }) {
           <Badge variant="outline">{b.data.source === "llm" ? `AI · ${b.data.model?.replace("ollama/", "")} · number-checked` : "template"}</Badge>
         )}
       </div>
-      <p className="text-sm">{b.isFetching && !b.data ? "Writing briefing with the local model..." : b.data?.text}</p>
+      {duplicate ? (
+        <p className="text-xs text-muted-foreground">
+          Deterministic wording (same as above — the model added nothing{b.data?.reason ? `: ${b.data.reason}` : ""}).
+        </p>
+      ) : (
+        <>
+          <p className="text-sm">{b.isFetching && !b.data ? "Writing briefing with the local model..." : b.data?.text}</p>
+          {b.data?.source === "template" && b.data?.reason && (
+            <p className="mt-1 text-[11px] text-muted-foreground">Fallback: {b.data.reason}</p>
+          )}
+        </>
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import * as React from "react"
 import { useAlertFeed, useEvents, useRegionZones, useRegions, useReplay, useTick } from "@/api/hooks"
 import { AlertFeed } from "@/components/alert-feed"
 import { AppShell } from "@/components/app-shell"
+import { LiveHazard } from "@/components/live-hazard"
 import { RankingQueue } from "@/components/ranking-queue"
 import { RiskMap } from "@/components/risk-map"
 import { SectionCards } from "@/components/section-cards"
@@ -31,7 +32,6 @@ export default function Dashboard() {
   }, [])
 
   const names = React.useMemo(() => new Map((zones.data ?? []).map((z) => [z.id, z.name])), [zones.data])
-  const event = events.data?.find((e) => e.id === eventId)
   const rows = payloads.data ?? []
   const error = [regions, zones, replay, payloads].find((q) => q.error)?.error
 
@@ -45,7 +45,7 @@ export default function Dashboard() {
         )}
         <SectionCards payloads={rows} region={region} />
         <div className="px-4 lg:px-6">
-          <TimeSlider ticks={ticks} eventName={event?.name ?? `Event ${eventId}`} />
+          <TimeSlider ticks={ticks} events={events.data ?? []} />
         </div>
         <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
           <RiskMap zones={zones.data ?? []} payloads={rows} />
@@ -54,8 +54,9 @@ export default function Dashboard() {
             <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} />
           </div>
         </div>
-        <div className="px-4 lg:px-6">
+        <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
           <RankingQueue payloads={rows} names={names} />
+          <LiveHazard />
         </div>
       </div>
     </AppShell>

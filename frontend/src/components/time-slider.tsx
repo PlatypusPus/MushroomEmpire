@@ -1,15 +1,15 @@
 import * as React from "react"
 import { PauseIcon, PlayIcon } from "lucide-react"
 
-import { clock } from "@/api/client"
+import { clock, type CoastEvent } from "@/api/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useReplayStore } from "@/state/replayStore"
 
 const TICK_MS = 1000
 
-export function TimeSlider({ ticks, eventName }: { ticks: string[]; eventName: string }) {
-  const { tick, playing, setTick, setPlaying } = useReplayStore()
+export function TimeSlider({ ticks, events }: { ticks: string[]; events: CoastEvent[] }) {
+  const { tick, playing, setTick, setPlaying, eventId, setEvent } = useReplayStore()
 
   React.useEffect(() => {
     if (!playing) return
@@ -35,9 +35,20 @@ export function TimeSlider({ ticks, eventName }: { ticks: string[]; eventName: s
         />
         <div className="text-sm tabular-nums">
           <div className="font-medium">{now ? clock(now, true) : "..."}</div>
-          <div className="text-xs text-muted-foreground">
-            {eventName} · replay of held-out data · gauge clock, timezone unverified
-          </div>
+          <select
+            value={eventId}
+            onChange={(e) => setEvent(+e.target.value)}
+            className="mt-0.5 max-w-64 rounded-md border bg-background px-1.5 py-0.5 text-xs"
+            aria-label="Storm to replay"
+          >
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.name}{ev.is_holdout ? " (held out)" : ""}
+              </option>
+            ))}
+            {!events.some((ev) => ev.id === eventId) && <option value={eventId}>Event {eventId}</option>}
+          </select>
+          <div className="text-xs text-muted-foreground">replay of held-out data · gauge clock, timezone unverified</div>
         </div>
       </CardContent>
     </Card>

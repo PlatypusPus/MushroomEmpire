@@ -81,29 +81,34 @@ next speed-up if live ticks need to be faster.
 
 ## Grounded assistant (`app/assistant.py`, `POST /api/assistant`)
 
-A LangChain (LCEL) chain that connects questions to the agents' outputs: `RunnablePassthrough.assign(route) | assign(facts via RunnableBranch) | compose`.
+An orchestrator that delegates to the other agents: `aplan | run_tools | compose`.
 
 ```mermaid
 graph LR
-  Q[question + selected zone] --> R[route: rules, no LLM]
-  R -->|zone / why| Z[briefing_input of the zone]
-  R -->|exposure| E[exposure counts + hospitals]
-  R -->|top| T[ranked zones]
-  R -->|model| M[stored validation facts]
-  R -->|help| H[fixed help text]
-  Z --> C[compose: local LLM phrases the facts]
+  Q[question + history] --> P[plan: LLM picks intent, zones, tools]
+  P -->|invalid| R[rules fallback]
+  P --> Z[zone_detail: briefing_input of 1-3 zones]
+  P --> E[exposure: counts + hospitals]
+  P --> T[top_zones: ranked zones]
+  P --> M[model_metrics: stored validation]
+  P --> L[live: official alerts + cyclones]
+  Z --> C[compose: local LLM phrases the merged facts, sees history]
   E --> C
   T --> C
   M --> C
+  L --> C
   C --> G{guard: numbers in facts, no forbidden words, no contradiction}
   G -->|pass| A[LLM answer]
-  G -->|fail or LLM down| X[deterministic template from the same facts]
+  G -->|fail or LLM down| X[deterministic render from the same facts]
 ```
 
-* The model sees only the small `facts` JSON, never raw data, and may not compute. Every number in its text must occur in the facts.
+* The planner's output is whitelist-validated (intent, zone ids, tool names); anything invalid falls back to instant rule matching, which also resolves follow-ups ("check again") to the last place in the conversation. A zone name in a live question upgrades `context` to the combined plan.
+* The model sees only the tools' small fact outputs plus recent turns, never raw data, and may not compute. Every number in its text must occur in the facts.
 * An insufficient-data zone never reaches the model (it could call it low risk); a ranking answer that calls an unknown zone "low risk" is rejected.
-* `source` is `llm` or `template`; `reason` says why a draft was rejected. Intent routing is rule-based because a 3B model routes unreliably.
-* Tested with a fake model (routing, grounded accept, invented-number / forbidden-word / contradiction fallback, LLM down, endpoint). Not yet run against a live Ollama model.
+* Meta questions (greetings, "who are you", "give me your system prompt") get fixed friendly replies from `META_REPLIES` — never data, never the prompt. `source` is `llm` or `template`; `tools` lists the agents consulted; `reason` says why a draft was rejected.
+* Compose and planning always use the non-thinking brief model: a thinking model burns the small token budget on reasoning and returns empty content, silently degrading every answer to the render.
+* Naturalness: compose sees structured facts only (pre-baked `alert_text`/`explanation` prose and snake_case status enums are withheld — the model copied them verbatim), the system prompt contains no quotable phrases, canned replies and the chat greeting are stripped from history, and compose runs at temperature 0.4. Guards reject facility talk without exposure facts and near-verbatim repeats of the previous turn (one retry with a rephrase note). When the question names no place, the deterministic history/selected-zone resolution overrides a planner pick that appears nowhere in the question.
+* Tested with a fake model (planner picks, whitelist rejection, history resolution, meta refusal, multi-tool merge, compose payload shape, zone override, history hygiene, temperature, grounded accept, invented-number / forbidden-word / contradiction fallback, LLM down, endpoint). Not yet run against a live Ollama model.
 
 ## Live hazard context (`app/context.py`, `GET /api/context`, `GET /api/zones/{id}/context`)
 
