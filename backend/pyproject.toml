@@ -23,6 +23,7 @@ dependencies = [
   "litellm>=1.104.2",
   "httpx>=0.28.1",
   "defusedxml>=0.7.1",
+  "mcp<2",
 ]
 # ponytail: tensorflow (CASPIAN) added only if the Phase 7 gate passes
 
