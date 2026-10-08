@@ -1,8 +1,27 @@
 import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type TimeWindow, type ZonePayload } from "@/api/client"
+import { useZoneBriefing } from "@/api/hooks"
+import { useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const SHOWN_ASSETS = 12
+
+function Briefing({ zone }: { zone: ZonePayload }) {
+  const { eventId, playing } = useReplayStore()
+  const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts }, !playing)
+  if (playing) return <div className="text-xs text-muted-foreground">Briefing pauses while the replay plays.</div>
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+        Briefing
+        {b.data && (
+          <Badge variant="outline">{b.data.source === "llm" ? `AI · ${b.data.model?.replace("ollama/", "")} · number-checked` : "template"}</Badge>
+        )}
+      </div>
+      <p className="text-sm">{b.isFetching && !b.data ? "Writing briefing with the local model..." : b.data?.text}</p>
+    </div>
+  )
+}
 
 function Window({ label, w }: { label: string; w: TimeWindow | null }) {
   return (
@@ -50,6 +69,7 @@ export function ZonePanel({ zone, name }: { zone: ZonePayload | undefined; name:
         <div className="rounded-md border-l-4 bg-muted/40 p-3 text-sm font-medium" style={{ borderColor: color }}>
           {zone.alert_text}
         </div>
+        <Briefing zone={zone} />
         {!unknown && (
           <div className="grid grid-cols-2 gap-4">
             <div>

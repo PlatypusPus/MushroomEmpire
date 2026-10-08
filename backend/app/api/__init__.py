@@ -142,6 +142,22 @@ async def zone_alert(zone_id: str, issue_ts: datetime | None = None, event_id: i
     return {"zone_id": zone_id, "alert_text": p.alert_text, "onset": p.onset, "peak": p.peak, "is_simulated": p.is_simulated}
 
 
+_briefs: dict[tuple, dict] = {}
+
+
+@router.get("/zones/{zone_id}/briefing")
+async def zone_briefing(zone_id: str, issue_ts: datetime | None = None, event_id: int | None = None) -> dict:
+    """Local-LLM narration of one zone, number-checked; falls back to the template (`source` says which)."""
+    from app.agents.briefing_llm import llm_brief
+
+    eid, snap = await active(event_id)
+    p = await payload(zone_id, eid, issue_ts)
+    key = (eid, zone_id, p.issue_ts)
+    if key not in _briefs or _briefs[key]["source"] != "llm":  # retry template fallbacks, keep good answers
+        _briefs[key] = await llm_brief(p, snap.zone(zone_id)["name"])
+    return _briefs[key]
+
+
 @router.get("/ranking")
 async def ranking(
     weights: Annotated[Weights, Depends()], issue_ts: datetime | None = None, event_id: int | None = None
