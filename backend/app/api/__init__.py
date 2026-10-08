@@ -207,7 +207,34 @@ async def assistant(req: AssistantRequest) -> dict:
         raise HTTPException(422, "question must not be empty")
     eid, snap = await active(req.event_id)
     ps = list(await payloads(eid, req.issue_ts))
-    return await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id)
+    from app import context
+
+    return await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id, context.get_context)
+
+
+@router.get("/context")
+async def live_context(refresh: bool = False) -> dict:
+    """Live official alerts (NWS), active cyclones (NHC), weather-model outlook and one hazard-context level. Never part of the replay."""
+    from app import context
+
+    return await context.get_context(force=refresh)
+
+
+@router.get("/zones/{zone_id}/context")
+async def zone_context(zone_id: str, model_probability: float | None = None, event_id: int | None = None) -> dict:
+    """County-level slice of the live context for a zone. Pass `model_probability` (from a LIVE forecast) to get the agreement flag;
+    replay events are historical, so the agreement is only computed when you supply it."""
+    from app import calibration, context
+
+    _, snap = await active(event_id)
+    z = next((z for z in snap.zones if z["id"] == zone_id), None)
+    if z is None:
+        raise HTTPException(404, f"unknown zone {zone_id}")
+    ctx = await context.get_context()
+    c = ctx["counties"].get(z.get("county")) or {"level": ctx["level"], "label": ctx["label"], "drivers": []}
+    ag = context.agreement(c["level"], model_probability, calibration.alert_threshold()) if model_probability is not None else None
+    return {"zone_id": zone_id, "county": z.get("county"), "level": c["level"], "label": c["label"], "drivers": c["drivers"], "agreement": ag,
+            "cyclones": ctx["cyclones"], "partial": ctx["partial"], "fetched_at": ctx["fetched_at"], "live": True}
 
 
 @router.get("/ranking")

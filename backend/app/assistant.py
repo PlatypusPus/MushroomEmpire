@@ -28,8 +28,9 @@ Rules:
 5. Recommend, never order: "responders may prioritise".
 6. Plain text, at most 4 short sentences, no markdown, no lists."""
 
-HELP = "I can tell you a zone's risk and why, who is exposed in a zone, which zones to prioritise, or how reliable the forecast is."
-TOP = re.compile(r"\b(top|highest|worst|most at risk|priorit\w*|rank\w*|first|where should|which zones?|biggest)\b", re.I)
+HELP = "I can tell you a zone's risk and why, who is exposed in a zone, which zones to prioritise, what official alerts or cyclones are active, or how reliable the forecast is."
+CONTEXT = re.compile(r"\b(alerts?|warnings?|watch\w*|cyclones?|hurricanes?|tropical|storms?|nhc|nws|weather|official|advisor\w*)\b", re.I)
+TOP =re.compile(r"\b(top|highest|worst|most at risk|priorit\w*|rank\w*|first|where should|which zones?|biggest)\b", re.I)
 WHY = re.compile(r"\b(why|reason\w*|driver\w*|cause\w*|explain\w*|because)\b", re.I)
 WHO = re.compile(r"\b(who|hospital\w*|exposed|exposure|affected|shelter\w*|roads?|fire station\w*|police|facilit\w*)\b", re.I)
 MODEL = re.compile(r"\b(accura\w*|reliab\w*|trust\w*|metric\w*|how good|validat\w*|precision|recall|miss\w*|false alarm\w*|uncertain\w*|confiden\w*)\b", re.I)
@@ -49,6 +50,8 @@ def route(inp: dict) -> dict:
     zid = _zone_from_text(q, inp["zones"]) or inp.get("zone_id")
     if MODEL.search(q):
         intent = "model"
+    elif CONTEXT.search(q):
+        intent = "context"
     elif TOP.search(q) and not _zone_from_text(q, inp["zones"]):
         intent = "top"
     elif zid and WHO.search(q):
@@ -126,6 +129,39 @@ def facts_model(inp: dict) -> dict:
     return out
 
 
+def _context_facts(ctx: dict | None, county: str | None) -> dict:
+    """Live official context -> small facts. Unavailable stays unavailable: it is never described as "no warnings"."""
+    if not ctx or ctx.get("level") is None:
+        return {"level": None, "available": False, "note": "live alert data is unavailable, so active warnings cannot be confirmed",
+                "last_recorded": (ctx or {}).get("last_recorded")}
+    c = ctx["counties"].get(county) if county else None
+    f = {"available": True, "region": ctx["region"], "level": ctx["level"], "level_label": ctx["label"], "level_scope": county or "worst county",
+         "drivers": (c or {}).get("drivers") or [d for v in ctx["counties"].values() for d in v["drivers"]][:5],
+         "cyclones": [{k: s[k] for k in ("name", "classification", "intensity_kt", "distance_km", "heading_toward_region")} for s in ctx["cyclones"][:3]],
+         "note": "official products and a distance rule, not the flood model's probability"}
+    if county and c:
+        f["level"], f["level_label"] = c["level"], c["label"]
+    if ctx.get("forecast"):
+        f["weather_model"] = {k: ctx["forecast"][k] for k in ("rain_next_24h_mm", "rain_next_72h_mm", "max_gust_next_48h_kmh")}
+    if ctx.get("partial"):
+        f["unavailable_sources"] = ctx["partial"]
+    return f
+
+
+def _county_of(inp: dict) -> str | None:
+    zid = inp["route"]["zone_id"]
+    return next((z.get("county") for z in inp["zones"] if z["id"] == zid), None) if zid else None
+
+
+def facts_context(inp: dict) -> dict:  # sync path: no live fetch is available
+    return _context_facts(None, None)
+
+
+async def afacts_context(inp: dict) -> dict:
+    fn = inp.get("context_fn")
+    return _context_facts(await fn() if fn else None, _county_of(inp))
+
+
 def _tool(fn):
     return RunnableLambda(fn)
 
@@ -136,6 +172,7 @@ facts_branch = RunnableBranch(
     (lambda x: x["route"]["intent"] == "exposure", _tool(facts_exposure)),
     (lambda x: x["route"]["intent"] == "top", _tool(facts_top)),
     (lambda x: x["route"]["intent"] == "model", _tool(facts_model)),
+    (lambda x: x["route"]["intent"] == "context", RunnableLambda(facts_context, afunc=afacts_context)),
     RunnableLambda(lambda x: {"help": HELP}),
 )
 
@@ -158,6 +195,15 @@ def template(intent: str, f: dict) -> str:
             return "No zones to rank."
         lines = "; ".join(f"{r['rank']}. {r['zone_name']}" + (f" ({r['probability_pct']}%, {r['severity']})" if r["probability_pct"] is not None else " (insufficient data)") for r in f["top_zones"])
         return f"Responders may prioritise, in this order: {lines}."
+    if intent == "context":
+        if not f.get("available"):
+            return "Live alert data is unavailable right now, so I cannot say whether any warnings are active."
+        parts = [f"Official hazard level for {f['level_scope']}: {f['level_label']}" + (f" ({'; '.join(f['drivers'])})" if f["drivers"] else "") + "."]
+        for c in f["cyclones"][:2]:
+            parts.append(f"Active Atlantic cyclone: {c['classification']} {c['name']}, {c['distance_km']} km away" + (", heading toward the region." if c["heading_toward_region"] else "."))
+        if "weather_model" in f:
+            parts.append(f"The weather model forecasts about {f['weather_model']['rain_next_24h_mm']} mm of rain in the next 24 hours.")
+        return " ".join(parts) + " This is separate from the flood model's probability."
     if intent == "model":
         bits = []
         if "alert_precision_pct" in f:
@@ -192,6 +238,8 @@ async def compose(x: dict) -> dict:
             raise ValueError("forbidden word")
         if intent in ("zone", "why") and facts.get("status") != "no_episode_expected" and re.search(r"\bno\b[^.]*\bepisode\b|\bnot expected\b", text, re.I):
             raise ValueError("contradicts status")
+        if intent == "context" and facts.get("level") is None and re.search(r"\b(no|any|none)\b[^.]*\b(alerts?|warnings?|watch\w*)\b", text, re.I):
+            raise ValueError("claims about warnings while alert data is unavailable")
         if intent == "top" and facts.get("zones_with_insufficient_data") and re.search(r"\blow\b[^.]*\brisk\b", text, re.I):
             raise ValueError("calls an unknown zone low risk")
         if facts.get("is_simulated"):
@@ -209,7 +257,8 @@ ASSISTANT = (
 )
 
 
-async def ask(question: str, payloads: list[ZonePayload], zones: list[dict], model_runs: list[dict], zone_id: str | None = None) -> dict:
-    res = await ASSISTANT.ainvoke({"question": question, "payloads": payloads, "zones": zones, "model_runs": model_runs, "zone_id": zone_id})
+async def ask(question: str, payloads: list[ZonePayload], zones: list[dict], model_runs: list[dict], zone_id: str | None = None, context_fn=None) -> dict:
+    """context_fn: optional async callable returning app.context.get_context(); awaited only for alert / cyclone questions."""
+    res = await ASSISTANT.ainvoke({"question": question, "payloads": payloads, "zones": zones, "model_runs": model_runs, "zone_id": zone_id, "context_fn": context_fn})
     return {"answer": res["answer"], "source": res["source"], "model": res["model"], "intent": res["route"]["intent"],
             "zone_id": res["route"]["zone_id"], "reason": res["reason"]}
