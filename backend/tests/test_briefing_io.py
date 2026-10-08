@@ -34,3 +34,7 @@ def test_grounded_accepts_template_and_rejects_invented_numbers():
     assert grounded(f"{i['zone_name']} is at {i['probability_pct']} percent.", i)
     with pytest.raises(ValueError):
         grounded(f"{i['zone_name']} will see 3.5 feet of water.", i)
+
+
+def test_timing_reliability_is_stated():
+    assert inp(top)["timing_reliability"] == {"peak": "none", "onset": "rough"}

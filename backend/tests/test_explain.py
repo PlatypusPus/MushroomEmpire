@@ -27,6 +27,7 @@ def test_level_phrase_follows_the_values():
     assert explain_detail(drv(level_m=0.5), below)[0].phrase == "water was above its high-water mark earlier today"
     assert explain_detail(drv(level_m=0.5), fv(level_m=-0.2, level_max_24h=-0.1, level_max_72h=0.2))[0].phrase.endswith("in recent days")
     assert explain_detail(drv(level_m=0.5), fv(level_m=-0.2, level_max_24h=-0.1, level_max_72h=-0.1))[0].phrase == "water close to its usual high-water mark"
+    assert explain_detail(drv(level_m=0.5), fv(level_m=-1.2, level_max_24h=-1.1, level_max_72h=-1.0)) == []  # far below the mark: no false "close to"
 
 
 def test_never_claims_rising_for_a_falling_gauge():
@@ -41,8 +42,8 @@ def test_rain_is_only_ever_recent_and_only_if_it_rained():
 
 
 def test_small_themes_are_dropped_and_strength_is_in_words():
-    r = explain_detail(drv(level_m=1.0, elevation_m=0.3, level_change_6h=0.02), fv())
-    assert [x.theme for x in r] == ["level", "terrain"] and r[1].strength == "important"
+    r = explain_detail(drv(level_m=1.0, elevation_m=0.3, level_change_6h=0.02), fv(elevation_m=1.0))
+    assert [x.theme for x in r] == ["level", "terrain"] and r[1].strength == "standing factor"  # terrain is always last
 
 
 def test_not_at_risk_explains_why_not():
@@ -63,3 +64,14 @@ def test_terrain_phrases_are_checked_against_the_ground():
     assert explain_detail(drv(elevation_m=0.4), fv(elevation_m=6.0, hand_m=2.0)) == []  # high ground cannot be a reason for HIGH risk
     assert explain_detail(drv(elevation_m=-0.4), fv(elevation_m=6.0), at_risk=False)[0].phrase == "higher ground"
     assert explain_detail(drv(elevation_m=-0.4), fv(elevation_m=1.0, hand_m=0.2), at_risk=False) == []  # low ground is not protective
+
+
+def test_terrain_is_a_standing_factor_never_the_why_now():
+    low = fv(elevation_m=1.0, hand_m=0.3)
+    r = explain_detail(drv(elevation_m=0.5, level_m=0.2), low)
+    assert r[0].theme == "level" and r[-1].strength == "standing factor"
+    only_ground = explain_detail(drv(elevation_m=0.5), low)
+    assert explain_text(only_ground, True).startswith("Nothing unusual in recent water levels")
+    assert "Standing factor: low-lying ground" in explain_text(r, True)
+    assert explain_text(only_ground, True) == "Nothing unusual in recent water levels. The zone has low-lying ground, which raises its risk."
+    assert explain_text(explain_detail(drv(elevation_m=-0.5), fv(elevation_m=6.0), at_risk=False), False) == "Nothing unusual in recent water levels. The zone sits on higher ground."

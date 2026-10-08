@@ -3438,10 +3438,10 @@
      {
       "theme": "terrain",
       "phrase": "low-lying ground",
-      "strength": "minor"
+      "strength": "standing factor"
      }
     ],
-    "explanation": "Main reason: water close to its usual high-water mark. Also: water rising, low-lying ground.",
+    "explanation": "Main reason: water close to its usual high-water mark. Also: water rising. Standing factor: low-lying ground.",
     "exposure": [
      {
       "type": "shelter",

@@ -48,6 +48,8 @@ def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
         "exposure_counts": dict(counts), "hospitals_named": named,
         "exposure_note": "shelters are only potential (OSM schools and community centres); never call them confirmed shelters",
         "rank": p.rank, "rank_reason": p.rank_reason,
+        # review (ROOT_CONTEXT 2m): peak hour is no better than guessing the middle of the window; onset hour is only slightly better than "now"
+        "timing_reliability": {"peak": "none", "onset": "rough"},
         "is_simulated": p.is_simulated, "coverage": p.coverage, "model": p.model,
         "alert_text": p.alert_text,  # the deterministic template: the fallback if the LLM is down or fails the check
     }

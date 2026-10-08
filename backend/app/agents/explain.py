@@ -32,6 +32,7 @@ THEME = {
     "rain_6h": "rain", "rain_24h": "rain", "rain_72h": "rain",
 }
 ELEV_MEDIAN_M, HAND_MEDIAN_M = 3.7, 0.98  # medians over the 109 zones (ROOT_CONTEXT 2e): "low" / "high" ground is judged against these
+CLOSE_UNITS = 0.3  # "close to" the mark means within this many stage units below it (audit: 16% of earlier uses were >0.5 below)
 MIN_SHARE = 0.05  # themes below 5% of the total contribution are not mentioned
 
 
@@ -50,7 +51,7 @@ def _raising(theme: str, fv: FeatureVector | None) -> str | None:
             return "water was above its high-water mark earlier today"
         if _pos(fv.level_max_72h):
             return "water was above its high-water mark in recent days"
-        return "water close to its usual high-water mark"
+        return "water close to its usual high-water mark" if fv.level_m >= -CLOSE_UNITS else None  # far below: say nothing rather than something false
     if theme == "rise":
         if fv.level_trend_m_per_h > 0 or _pos(fv.level_change_6h):
             return "water rising"
@@ -100,7 +101,11 @@ def explain_detail(drivers: list[Driver], fv: FeatureVector | None = None, at_ri
             phrase = (_raising if at_risk else _protective)(theme, fv)
         if phrase is None or any(r.phrase == phrase for r in out):
             continue
-        out.append(Reason(theme=theme, phrase=phrase, strength="main reason" if share >= 0.5 else "important" if share >= 0.2 else "minor"))
+        strength = "standing factor" if theme == "terrain" else "main reason" if share >= 0.5 else "important" if share >= 0.2 else "minor"
+        out.append(Reason(theme=theme, phrase=phrase, strength=strength))
+    # terrain is the same every day for a zone (79% of its contribution varies only between gauges): it says why a zone is
+    # vulnerable, not why now, so it goes after the dynamic reasons
+    out.sort(key=lambda r: r.theme == "terrain")
     return out[:top]
 
 
@@ -113,12 +118,19 @@ def explain_text(reasons: list[Reason], at_risk: bool) -> str:
     """One plain sentence for the UI. Strength words come from the share of the total contribution, never a number."""
     if not reasons:
         return "No single factor stands out."
-    lead = "Main reason" if reasons[0].strength == "main reason" else "Biggest factor"
-    s = f"{lead}: {reasons[0].phrase}."
-    rest = [r.phrase for r in reasons[1:]]
+    dynamic = [r for r in reasons if r.theme != "terrain"]
+    ground = [r.phrase for r in reasons if r.theme == "terrain"]
+    if not dynamic:  # only the standing terrain factor: be clear it is not a "why now"
+        return (f"Nothing unusual in recent water levels. The zone has {ground[0]}, which raises its risk." if at_risk
+                else f"Nothing unusual in recent water levels. The zone sits on {ground[0]}.")
+    lead = "Main reason" if dynamic[0].strength == "main reason" else "Biggest factor"
+    s = f"{lead}{'' if at_risk else ' for the low risk'}: {dynamic[0].phrase}."
+    rest = [r.phrase for r in dynamic[1:]]
     if rest:
         s += f" Also: {', '.join(rest)}."
-    return s if at_risk else s.replace("Main reason", "Main reason for the low risk").replace("Biggest factor", "Biggest factor for the low risk")
+    if ground:
+        s += f" Standing factor: {ground[0]}."
+    return s
 
 
 def explain_zone(drivers: list[Driver], fv: FeatureVector, risk) -> tuple[list[str], list[Reason], str]:

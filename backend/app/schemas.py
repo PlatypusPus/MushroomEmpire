@@ -96,7 +96,7 @@ class Driver(Strict):
 class Reason(Strict):
     theme: str  # level | rise | swing | terrain | rain (or a legacy feature name)
     phrase: str  # plain words, no numbers
-    strength: Literal["main reason", "important", "minor"]  # share of the total contribution, shown as words
+    strength: Literal["main reason", "important", "minor", "standing factor"]  # share of the contribution as words; "standing factor" = terrain, same every day
 
 
 class DepthTrajectory(Strict):
