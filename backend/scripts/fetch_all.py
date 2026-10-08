@@ -47,7 +47,14 @@ def tides():
                              units="metric", time_zone="gmt", format="json", application="coastguard")
                     if product == "predictions":
                         q["interval"] = "h"
-                    d = requests.get("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter", params=q, timeout=60).json()
+                    for attempt in range(8):  # survive short network drops
+                        try:
+                            d = requests.get("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter", params=q, timeout=60).json()
+                            break
+                        except (requests.RequestException, ValueError):
+                            time.sleep(min(30 * (attempt + 1), 120))
+                    else:
+                        raise RuntimeError(f"NOAA unreachable for {sid} {product} {b:%Y-%m}")
                     rows += d.get("data") or d.get("predictions") or []
             out.parent.mkdir(parents=True, exist_ok=True)
             pd.DataFrame(rows).to_csv(out, index=False)
