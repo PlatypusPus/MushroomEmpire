@@ -136,6 +136,39 @@ export interface ChatResponse {
   model: string
 }
 
+/** Live environmental overlays (GET /api/env). Overlay-only: never replay data, never model input. */
+export interface EnvAlertFeature {
+  type: "Feature"
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon
+  properties: { event: string; level: number; counties: string[]; headline: string; ends: string }
+}
+export interface EnvCyclone {
+  id: string
+  name: string
+  classification: string
+  intensity_kt: number | null
+  lat: number
+  lon: number
+  distance_km: number | null
+  heading_toward_region: boolean | null
+  last_update: string
+  cone: [number, number][] | null
+  track: [number, number][] | null
+}
+export interface EnvLayers {
+  live: boolean
+  note: string
+  fetched_at: string
+  alerts_geo: { type: "FeatureCollection"; features: EnvAlertFeature[] }
+  cyclones: EnvCyclone[]
+  radar: { host: string; color: number; options: string; frames: { time: number; path: string }[] }
+  marine: { wave_height_now_m: number | null; wave_height_next_24h_max_m: number | null; wave_period_now_s: number | null } | null
+  aqi: { us_aqi_now: number | null; pm2_5_now: number | null; ozone_now: number | null } | null
+  wind: { ref_time: string | null; lats: number[]; lons: number[]; speed_kmh: number[][]; dir_deg: number[][] } | null
+  sources: Record<string, { ok: boolean; usable: boolean; age_s: number | null; error: string | null }>
+  partial: string[]
+}
+
 export const SEVERITY_COLOR: Record<Severity, string> = {
   low: "#22c55e",
   moderate: "#eab308",
@@ -230,6 +263,7 @@ export const api = {
       { method: "POST" }
     ),
   context: () => apiFetch<LiveContext>("/context"),
+  env: () => apiFetch<EnvLayers>("/env"),
   metrics: (region_id: string, event_id?: number) =>
     apiFetch<Metrics[]>(`/models/${region_id}/metrics${params({ event_id })}`),
   chat: (messages: ChatMessage[], system?: string) =>

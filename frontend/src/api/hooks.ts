@@ -44,6 +44,11 @@ export function useLiveContext() {
   return useQuery({ queryKey: ["live-context"], queryFn: api.context, refetchInterval: 5 * 60 * 1000, retry: 0 })
 }
 
+/** Live environmental map overlays (alert polygons, cones, radar, marine/AQI, wind). Overlay-only. */
+export function useEnvLayers() {
+  return useQuery({ queryKey: ["env-layers"], queryFn: api.env, refetchInterval: 5 * 60 * 1000, retry: 0 })
+}
+
 /** Alerts that have fired up to the current replay tick, newest first. */
 export function useAlertFeed(session_id: string | undefined, upto: number) {
   return useQuery({
