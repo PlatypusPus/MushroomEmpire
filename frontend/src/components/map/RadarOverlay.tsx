@@ -13,7 +13,7 @@ export function RadarOverlay() {
   const on = useMapToggles((s) => s.radar)
   const playing = useMapToggles((s) => s.radarPlaying)
   const { data } = useEnvLayers()
-  const layerRef = React.useRef<L.TileLayer | null>(null)
+  const layersRef = React.useRef<L.TileLayer[]>([])
   const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
 
   React.useEffect(() => {
@@ -22,8 +22,8 @@ export function RadarOverlay() {
         clearInterval(timerRef.current)
         timerRef.current = null
       }
-      layerRef.current?.remove()
-      layerRef.current = null
+      layersRef.current.forEach((l) => l.remove())
+      layersRef.current = []
     }
     teardown()
 
@@ -35,16 +35,23 @@ export function RadarOverlay() {
       pane.style.zIndex = "450" // above zone fills (400), below markers (600)
       pane.style.pointerEvents = "none"
     }
-    const url = (i: number) =>
-      `${data.radar.host}${frames[i].path}/256/{z}/{x}/{y}/${data.radar.color}/${data.radar.options}.png`
-    let i = 0
-    const layer = L.tileLayer(url(0), { pane: "radarPane", opacity: 0.55, attribution: "RainViewer" })
-    layer.addTo(map)
-    layerRef.current = layer
-    if (playing && frames.length > 1) {
+    // One layer per frame, all loaded up front, and the animation only swaps opacity. (Swapping a single layer's url every
+    // 600 ms cancelled every tile before it finished loading, so the radar flickered and mostly never drew.)
+    // RainViewer only serves radar up to zoom 7; deeper zooms return a "zoom level not supported" picture tile,
+    // so maxNativeZoom makes Leaflet stretch the zoom-7 tiles instead of requesting those placeholders.
+    const layers = frames.map((f) =>
+      L.tileLayer(`${data.radar.host}${f.path}/256/{z}/{x}/{y}/${data.radar.color}/${data.radar.options}.png`, {
+        pane: "radarPane", opacity: 0, attribution: "RainViewer", maxNativeZoom: 7, keepBuffer: 1,
+      }).addTo(map),
+    )
+    layersRef.current = layers
+    let i = layers.length - 1 // newest frame first
+    const show = (k: number) => layers.forEach((l, j) => l.setOpacity(j === k ? 0.55 : 0))
+    show(i)
+    if (playing && layers.length > 1) {
       timerRef.current = setInterval(() => {
-        i = (i + 1) % frames.length
-        layer.setUrl(url(i))
+        i = (i + 1) % layers.length
+        show(i)
       }, FRAME_MS)
     }
     return teardown
