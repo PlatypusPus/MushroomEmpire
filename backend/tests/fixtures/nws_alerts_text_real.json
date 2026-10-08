@@ -1,0 +1,110 @@
+{
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.af8df1e365c8819101971e75d525e6ad40ea05c3.001.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.af8df1e365c8819101971e75d525e6ad40ea05c3.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.af8df1e365c8819101971e75d525e6ad40ea05c3.001.1",
+    "areaDesc": "Coastal Collier County; Mainland Monroe; Coastal Palm Beach County; Coastal Broward County; Coastal Miami Dade County; Far South Miami-Dade County",
+    "geocode": {
+     "SAME": [
+      "012021",
+      "012087",
+      "012099",
+      "012011",
+      "012086"
+     ],
+     "UGC": [
+      "FLZ069",
+      "FLZ075",
+      "FLZ168",
+      "FLZ172",
+      "FLZ173",
+      "FLZ174"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/FLZ069",
+     "https://api.weather.gov/zones/forecast/FLZ075",
+     "https://api.weather.gov/zones/forecast/FLZ168",
+     "https://api.weather.gov/zones/forecast/FLZ172",
+     "https://api.weather.gov/zones/forecast/FLZ173",
+     "https://api.weather.gov/zones/forecast/FLZ174"
+    ],
+    "references": [
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.49229713b893d0d2339d807a3b37744b2782ad08.001.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.49229713b893d0d2339d807a3b37744b2782ad08.001.1",
+      "sender": "w-nws.webmaster@noaa.gov",
+      "sent": "2026-10-08T01:36:00-04:00"
+     },
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.49229713b893d0d2339d807a3b37744b2782ad08.002.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.49229713b893d0d2339d807a3b37744b2782ad08.002.1",
+      "sender": "w-nws.webmaster@noaa.gov",
+      "sent": "2026-10-08T01:36:00-04:00"
+     }
+    ],
+    "sent": "2026-10-08T16:39:00-04:00",
+    "effective": "2026-10-08T16:39:00-04:00",
+    "onset": "2026-10-08T16:39:00-04:00",
+    "expires": "2026-10-09T05:00:00-04:00",
+    "ends": "2026-10-09T22:00:00-04:00",
+    "status": "Actual",
+    "messageType": "Update",
+    "category": "Met",
+    "severity": "Minor",
+    "certainty": "Likely",
+    "urgency": "Expected",
+    "event": "Coastal Flood Statement",
+    "sender": "w-nws.webmaster@noaa.gov",
+    "senderName": "NWS Miami FL",
+    "headline": "Coastal Flood Statement issued October 8 at 4:39PM EDT until October 9 at 10:00PM EDT by NWS Miami FL",
+    "description": "* WHAT...Isolated minor coastal flooding.\n\n* WHERE...Coastal Collier County and Mainland Monroe.\n\n* WHEN...Through Friday evening.\n\n* IMPACTS...Some water on low lying roads and property.",
+    "instruction": "Do not drive through flooded roadways.",
+    "response": "Monitor",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "CFWMFL"
+     ],
+     "WMOidentifier": [
+      "WHUS42 KMFL 082039"
+     ],
+     "NWSheadline": [
+      "COASTAL FLOOD STATEMENT REMAINS IN EFFECT THROUGH FRIDAY EVENING"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "VTEC": [
+      "/O.CON.KMFL.CF.S.0005.000000T0000Z-261010T0200Z/"
+     ],
+     "eventEndingTime": [
+      "2026-10-09T22:00:00-04:00"
+     ],
+     "expiredReferences": [
+      "w-nws.webmaster@noaa.gov,urn:oid:2.49.0.1.840.0.c84a7570060c90de95d1f110801d6f0cec3a2264.001.1,2026-10-07T19:59:00-04:00 w-nws.webmaster@noaa.gov,urn:oid:2.49.0.1.840.0.10af6cd096aa59d531600eef1f3086bb369bc5a0.001.1,2026-10-07T08:26:00-04:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "NWS"
+     ],
+     "NationalWeatherService": [
+      "CFS"
+     ]
+    }
+   }
+  }
+ ]
+}

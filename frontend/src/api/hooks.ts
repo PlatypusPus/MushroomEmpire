@@ -44,6 +44,11 @@ export function useLiveContext() {
   return useQuery({ queryKey: ["live-context"], queryFn: api.context, refetchInterval: 5 * 60 * 1000, retry: 0 })
 }
 
+/** Official texts behind the live hazard level (reading material only, never model input). */
+export function useHazardArticles() {
+  return useQuery({ queryKey: ["hazard-articles"], queryFn: api.hazardArticles, refetchInterval: 5 * 60 * 1000, retry: 0 })
+}
+
 /** Live environmental map overlays (alert polygons, cones, radar, marine/AQI, wind). Overlay-only. */
 export function useEnvLayers() {
   return useQuery({ queryKey: ["env-layers"], queryFn: api.env, refetchInterval: 5 * 60 * 1000, retry: 0 })

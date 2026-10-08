@@ -272,6 +272,14 @@ async def live_context(refresh: bool = False) -> dict:
     return await context.get_context(force=refresh)
 
 
+@router.get("/hazards/articles")
+async def hazard_articles(refresh: bool = False) -> dict:
+    """Reading list behind the live hazard level: full official texts (NWS alerts, NHC advisories and outlook, NWS Miami forecast discussion) with preview images. Reading material only, never model input."""
+    from app import articles
+
+    return await articles.get_articles(force=refresh)
+
+
 @router.get("/env")
 async def env_layers(refresh: bool = False) -> dict:
     """Live environmental map overlays: NWS alert polygons, cyclone cones/tracks, radar frames, marine/AQI, wind grid. Overlay-only, never model input."""

@@ -111,6 +111,24 @@ export interface LiveCyclone {
   distance_km: number | null
   heading_toward_region: boolean | null
 }
+export interface HazardArticle {
+  id: string
+  kind: "alert" | "advisory" | "summary" | "discussion" | "outlook" | "forecast" | "technical"
+  level: number | null
+  source: string
+  title: string
+  headline: string
+  issued: string | null
+  ends: string | null
+  url: string
+  counties: string[]
+  storm?: string | null
+  summary: string
+  body: string
+  image: { url: string; alt: string; credit: string } | null
+}
+export interface HazardArticles { fetched_at: string; articles: HazardArticle[]; partial: string[]; stale?: boolean }
+
 export interface LiveContext {
   live: boolean
   note: string
@@ -264,6 +282,7 @@ export const api = {
     ),
   context: () => apiFetch<LiveContext>("/context"),
   env: () => apiFetch<EnvLayers>("/env"),
+  hazardArticles: () => apiFetch<HazardArticles>("/hazards/articles"),
   metrics: (region_id: string, event_id?: number) =>
     apiFetch<Metrics[]>(`/models/${region_id}/metrics${params({ event_id })}`),
   chat: (messages: ChatMessage[], system?: string) =>
