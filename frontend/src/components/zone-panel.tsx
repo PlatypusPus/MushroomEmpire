@@ -4,6 +4,7 @@ import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChatPanel } from "@/components/chat-panel"
 
 const TYPE_LABEL: Record<string, string> = {
   hospital: "Hospitals", fire_station: "Fire stations", police: "Police", shelter: "Potential shelters",
@@ -114,15 +115,27 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region }: { z
   if (!zone) {
     return (
       <Card className="flex h-full min-h-0 flex-col overflow-hidden">
-        <CardHeader className="shrink-0">
-          <CardTitle>Place details</CardTitle>
-          <CardDescription>Click a place on the map to see its forecast, why, and nearby facilities.</CardDescription>
-        </CardHeader>
-        {payloads && (
-          <CardContent className="min-h-0 flex-1 overflow-y-auto">
-            <OverviewStrip payloads={payloads} region={region} />
-          </CardContent>
-        )}
+        <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
+          <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
+            <TabsList variant="line">
+              <TabsTrigger value="details">Place Details</TabsTrigger>
+              <TabsTrigger value="chat">Chat</TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="details" className="min-h-0 flex-1 overflow-y-auto p-4">
+            <CardHeader>
+              <CardDescription>Click a place on the map to see its forecast, why, and nearby facilities.</CardDescription>
+            </CardHeader>
+            {payloads && (
+              <CardContent>
+                <OverviewStrip payloads={payloads} region={region} />
+              </CardContent>
+            )}
+          </TabsContent>
+          <TabsContent value="chat" keepMounted className="flex min-h-0 flex-1 flex-col overflow-hidden px-(--card-spacing) pb-(--card-spacing) [&_[data-slot=card-content]]:px-0">
+            <ChatPanel className="flex min-h-0 flex-1 flex-col" />
+          </TabsContent>
+        </Tabs>
       </Card>
     )
   }
@@ -130,52 +143,65 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region }: { z
   const color = zone.severity ? SEVERITY_COLOR[zone.severity] : UNKNOWN_COLOR
   return (
     <Card className="flex h-full min-h-0 flex-col overflow-hidden">
-      <CardHeader className="shrink-0">
-        <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
-        <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
-        <CardAction className="flex gap-1">
-          <Badge variant="outline" className="capitalize">{zone.coverage === "insufficient_data" ? "not enough data" : zone.coverage.replace("_", " ")}</Badge>
-          {zone.is_simulated && <Badge variant="destructive">Simulation</Badge>}
-        </CardAction>
-      </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-        {payloads && <OverviewStrip payloads={payloads} region={region} />}
-        {!unknown && (
-          <div className="grid grid-cols-4 gap-3">
-            <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />
-            <Stat label="How bad" value={zone.severity ?? "n/a"} color={color} />
-            <Stat label="Starts" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
-            <Stat label="Worst at" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
-          </div>
-        )}
-        <Summary zone={zone} tunable={tunable} color={color} />
-        <Tabs defaultValue="why">
-          <TabsList>
-            <TabsTrigger value="why">Why</TabsTrigger>
-            <TabsTrigger value="facilities">Facilities ({zone.exposure.length})</TabsTrigger>
+      <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
+        <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
+          <TabsList variant="line">
+            <TabsTrigger value="details">Place Details</TabsTrigger>
+            <TabsTrigger value="chat">Chat</TabsTrigger>
           </TabsList>
-          <TabsContent value="why" className="pt-2">
-            {zone.reasons?.length ? (
-              <ul className="flex flex-col gap-1.5 text-sm">
-                {zone.reasons.map((r) => (
-                  <li key={r.phrase} className="flex items-center justify-between gap-2">
-                    <span>{r.phrase}</span>
-                    <Badge variant={r.strength === "main reason" ? "default" : "outline"} className="shrink-0">{r.strength}</Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : zone.drivers_text.length ? (
-              <ul className="list-disc pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">There is no working water sensor near this place, so we do not know the risk.</p>
+        </div>
+        <TabsContent value="details" className="min-h-0 flex-1 overflow-y-auto">
+          <CardHeader>
+            <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
+            <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
+            <CardAction className="flex gap-1">
+              <Badge variant="outline" className="capitalize">{zone.coverage === "insufficient_data" ? "not enough data" : zone.coverage.replace("_", " ")}</Badge>
+              {zone.is_simulated && <Badge variant="destructive">Simulation</Badge>}
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 pt-6">
+            {payloads && <OverviewStrip payloads={payloads} region={region} />}
+            {!unknown && (
+              <div className="grid grid-cols-4 gap-3">
+                <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />
+                <Stat label="How bad" value={zone.severity ?? "n/a"} color={color} />
+                <Stat label="Starts" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
+                <Stat label="Worst at" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
+              </div>
             )}
-            {zone.model && <p className="mt-2 text-[11px] text-muted-foreground">Model {zone.model}</p>}
-          </TabsContent>
-          <TabsContent value="facilities" className="pt-2">
-            <Facilities items={zone.exposure} />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+            <Summary zone={zone} tunable={tunable} color={color} />
+            <Tabs defaultValue="why">
+              <TabsList>
+                <TabsTrigger value="why">Why</TabsTrigger>
+                <TabsTrigger value="facilities">Facilities ({zone.exposure.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="why" className="pt-2">
+                {zone.reasons?.length ? (
+                  <ul className="flex flex-col gap-1.5 text-sm">
+                    {zone.reasons.map((r) => (
+                      <li key={r.phrase} className="flex items-center justify-between gap-2">
+                        <span>{r.phrase}</span>
+                        <Badge variant={r.strength === "main reason" ? "default" : "outline"} className="shrink-0">{r.strength}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                ) : zone.drivers_text.length ? (
+                  <ul className="list-disc pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">There is no working water sensor near this place, so we do not know the risk.</p>
+                )}
+                {zone.model && <p className="mt-2 text-[11px] text-muted-foreground">Model {zone.model}</p>}
+              </TabsContent>
+              <TabsContent value="facilities" className="pt-2">
+                <Facilities items={zone.exposure} />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </TabsContent>
+        <TabsContent value="chat" keepMounted className="flex min-h-0 flex-1 flex-col overflow-hidden px-(--card-spacing) pb-(--card-spacing) [&_[data-slot=card-content]]:px-0">
+          <ChatPanel className="flex min-h-0 flex-1 flex-col" />
+        </TabsContent>
+      </Tabs>
     </Card>
   )
 }
