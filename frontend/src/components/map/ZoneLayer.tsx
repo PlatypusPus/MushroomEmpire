@@ -1,12 +1,14 @@
 import * as React from "react"
 import * as L from "leaflet"
 import { useMap } from "react-leaflet"
+import { useTheme } from "next-themes"
 
 import { SEVERITY_COLOR, UNKNOWN_COLOR, type Zone, type ZonePayload } from "@/api/client"
 import { useMapToggles } from "@/state/mapLayersStore"
 import { useReplayStore } from "@/state/replayStore"
 
 const SELECT_RING = "#3b82f6"
+const DARK_OUTLINE = "#000000" // dark mode: black outlines read better against the bright fills
 
 function severityColor(sev: ZonePayload["severity"] | undefined): string {
   return sev ? SEVERITY_COLOR[sev] : UNKNOWN_COLOR
@@ -37,22 +39,24 @@ export function ZoneLayer({ zones, payloads }: { zones: Zone[]; payloads: ZonePa
   const pulseOn = useMapToggles((s) => s.pulse)
   const spotlightOn = useMapToggles((s) => s.spotlight)
   const transitionsOn = useMapToggles((s) => s.transitions)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
 
   const layerRef = React.useRef<L.GeoJSON | null>(null)
   const idsRef = React.useRef<string>("")
-  const stateRef = React.useRef({ zones, payloads, selected, pulseOn, spotlightOn, transitionsOn })
-  stateRef.current = { zones, payloads, selected, pulseOn, spotlightOn, transitionsOn }
+  const stateRef = React.useRef({ zones, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark })
+  stateRef.current = { zones, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark }
   const skipDeselect = React.useRef(false)
 
   const styleFor = React.useCallback((zoneId: string): L.PathOptions => {
-    const { payloads: pl, selected: sel } = stateRef.current
+    const { payloads: pl, selected: sel, isDark: dark } = stateRef.current
     const p = pl.find((x) => x.zone_id === zoneId)
     const c = severityColor(p?.severity)
     const isSel = sel === zoneId
     return {
       fillColor: c,
       fillOpacity: 0.5,
-      color: isSel ? SELECT_RING : c,
+      color: isSel ? SELECT_RING : dark ? DARK_OUTLINE : c,
       weight: isSel ? 3 : 1,
       opacity: 1,
     }
@@ -145,7 +149,7 @@ export function ZoneLayer({ zones, payloads }: { zones: Zone[]; payloads: ZonePa
   // data / selection / animation toggles: restyle in place (transitions animate)
   React.useEffect(() => {
     sync()
-  }, [sync, payloads, selected, pulseOn, spotlightOn, transitionsOn])
+  }, [sync, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark])
 
   // zones master toggle: attach/detach
   React.useEffect(() => {
