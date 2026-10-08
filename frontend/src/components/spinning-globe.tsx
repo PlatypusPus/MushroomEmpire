@@ -55,7 +55,7 @@ export function SpinningGlobe({ className }: { className?: string }) {
       t.anisotropy = renderer.capabilities.getMaxAnisotropy()
       return t
     }
-    const uniforms = { day: { value: load("/textures/8k_earth_daymap.jpg") }, night: { value: load("/textures/8k_earth_nightmap.jpg") }, spin: { value: 0 } }
+    const uniforms = { day: { value: load("/textures/8k_earth_daymap.jpg") }, night: { value: load("/textures/8k_earth_nightmap.jpg") }, spin: { value: 0.3 } }
     const earth = new THREE.Mesh(new THREE.SphereGeometry(1.5, 128, 128), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: EARTH_FRAG }))
     const glow = new THREE.Mesh(
       new THREE.SphereGeometry(1.5 * 1.16, 64, 64),
