@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.agents.briefing import brief
 from app.agents.explain import explain_zone
+from app.agents.peak import attach_peak
 from app.agents.exposure import exposure
 from app.agents.forecast import forecast
 from app.agents.ingestion import ingest
@@ -24,7 +25,7 @@ def run_tick(snap: Snapshot, issue_ts: datetime, weights: Weights | None = None)
             unknown.append((z, exp))
             continue
         traj = forecast(fv)
-        risk = derive(traj)
+        risk = attach_peak(derive(traj), traj, fv, snap)
         known.append((z, fv, traj, risk, explain_zone(traj.drivers, fv, risk), exp))
 
     order = rank([(k[3], k[5]) for k in known], weights or Weights())

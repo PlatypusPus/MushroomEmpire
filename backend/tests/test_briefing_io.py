@@ -37,4 +37,4 @@ def test_grounded_accepts_template_and_rejects_invented_numbers():
 
 
 def test_timing_reliability_is_stated():
-    assert inp(top)["timing_reliability"] == {"peak": "none", "onset": "rough"}
+    assert inp(top)["timing_reliability"] == {"peak": "moderate", "onset": "rough"}

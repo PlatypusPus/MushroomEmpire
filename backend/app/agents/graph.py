@@ -14,6 +14,7 @@ from langgraph.graph import END, StateGraph
 
 from app.agents.briefing import brief
 from app.agents.explain import explain_zone
+from app.agents.peak import attach_peak
 from app.agents.exposure import exposure
 from app.agents.forecast import forecast
 from app.agents.ingestion import ingest
@@ -50,7 +51,7 @@ def build_zone_graph(snap: Snapshot, issue_ts: datetime):
         return {"traj": forecast(s["fv"])}
 
     def n_derive(s: ZoneState) -> dict:
-        return {"risk": derive(s["traj"])}
+        return {"risk": attach_peak(derive(s["traj"]), s["traj"], s["fv"], snap)}
 
     def n_explain(s: ZoneState) -> dict:
         return {"drivers": explain_zone(s["traj"].drivers, s["fv"], s["risk"])}
