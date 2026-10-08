@@ -11,14 +11,14 @@ const STARS = Array.from({ length: 90 }, (_, i) => ({
 
 export default function Landing() {
   return (
-    <main className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-[#02050c] text-white">
+    <main className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-background text-white">
       {STARS.map((s, i) => (
         <span key={i} className="absolute rounded-full bg-white" style={{ left: s.left, top: s.top, width: s.size, height: s.size, opacity: s.opacity }} />
       ))}
 
       <SpinningGlobe className="absolute left-[61%] top-1/2 h-[120vh] w-[170vh] -translate-x-1/2 -translate-y-1/2" />
 
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#02050c]/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/70" />
 
       <div className="relative z-10 flex flex-col items-center text-center">
         <h1 className="bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-6xl font-semibold tracking-[0.18em] text-transparent md:text-7xl"

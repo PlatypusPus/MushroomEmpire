@@ -15,15 +15,16 @@ void main(){
   vec3 N = normalize(n);
   float d = dot(N, ${SUN});
   float k = smoothstep(-0.18, 0.35, d);
-  vec3 dayTex = texture2D(day, uv).rgb;
+  vec3 dayRaw = texture2D(day, uv).rgb;
+  vec3 dayTex = vec3(dot(dayRaw, vec3(0.3, 0.59, 0.11)));  // theme is neutral grayscale: no colour
   vec3 dayC = dayTex * (0.12 + 1.15 * pow(max(d, 0.0), 0.8));
-  vec3 nightTex = texture2D(night, uv).rgb;
-  vec3 nightC = nightTex * vec3(2.4, 1.9, 1.3) + vec3(0.004, 0.010, 0.030);  // warm city lights over a faint blue ambient
+  vec3 nightTex = vec3(dot(texture2D(night, uv).rgb, vec3(0.3, 0.59, 0.11)));
+  vec3 nightC = nightTex * 2.6 + vec3(0.012);  // white city lights over a faint neutral ambient
   vec3 c = mix(nightC, dayC, k);
-  float term = exp(-pow(d / 0.16, 2.0));                                      // warm band along the terminator
-  c += vec3(1.0, 0.45, 0.15) * term * 0.10 * length(dayTex);
+  float term = exp(-pow(d / 0.16, 2.0));                                      // soft band along the terminator
+  c += vec3(1.0) * term * 0.06 * length(dayTex);
   float rim = pow(1.0 - max(dot(N, vec3(0.,0.,1.)), 0.0), 3.0);
-  c += vec3(0.25, 0.55, 1.0) * rim * smoothstep(-0.2, 0.7, d) * 0.55;         // atmosphere only on the lit side
+  c += vec3(0.85) * rim * smoothstep(-0.2, 0.7, d) * 0.55;         // atmosphere only on the lit side
   gl_FragColor = vec4(c, 1.0);
 }`
 
@@ -32,7 +33,7 @@ varying vec3 n; varying vec2 uv_;
 void main(){
   float f = pow(max(0.62 - dot(normalize(n), vec3(0.,0.,1.)), 0.0), 3.0);
   float lit = smoothstep(-0.1, 0.8, dot(normalize(n), ${SUN}));
-  gl_FragColor = vec4(0.3, 0.6, 1.0, 1.0) * f * lit * 1.6;
+  gl_FragColor = vec4(vec3(0.85), 1.0) * f * lit * 1.3;
 }`
 
 export function SpinningGlobe({ className }: { className?: string }) {
