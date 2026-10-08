@@ -1,5 +1,5 @@
 import * as React from "react"
-import { BellIcon, BellRingIcon, LayoutDashboardIcon, ListOrderedIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
+import { BellRingIcon, LayoutDashboardIcon, ListOrderedIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
 
 import { useLiveContext, useReplayData } from "@/api/hooks"
 import { NavMain } from "@/components/nav-main"
@@ -32,9 +32,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       badge: live.data ? `L${live.data.level}` : live.error ? "off" : null,
     },
   ]
-  const account = [
-    { title: "Email alerts & account", url: "/account", icon: <BellIcon /> },
-  ]
   const analyse = [
     { title: "Assistant", url: "/chat", icon: <MessageSquareIcon /> },
     { title: "Model validation", url: "/validation", icon: <ChartColumnIcon /> },
@@ -55,7 +52,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain label="Monitor" items={monitor} />
         <NavMain label="Analyse" items={analyse} />
-        <NavMain label="Account" items={account} />
         <p className="mt-auto px-4 pb-2 text-xs text-muted-foreground">
           Recommends only; never dispatches. Live hazards are a separate feed, not a model input.
         </p>
