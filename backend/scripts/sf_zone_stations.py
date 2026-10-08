@@ -20,7 +20,7 @@ async def main():
     eng = create_async_engine(settings.database_url)
     async with eng.connect() as c:
         z = pd.DataFrame((await c.execute(text("select id, geometry from zones"))).mappings().all())
-        s = pd.DataFrame((await c.execute(text("select id, var, lon, lat from stations where var in ('WATER','RAIN')"))).mappings().all())
+        s = pd.DataFrame((await c.execute(text("select id, var, lon, lat from stations where var in ('WATER','RAIN') and qc_ok"))).mappings().all())
     zg = gpd.GeoDataFrame(z[["id"]], geometry=[shape(g) for g in z.geometry], crs=4326).to_crs(2236)
     sg = gpd.GeoDataFrame(s, geometry=gpd.points_from_xy(s.lon, s.lat), crs=4326).to_crs(2236)
     rows = []

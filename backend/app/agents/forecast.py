@@ -1,7 +1,6 @@
 """Forecasting agent. Any forecaster maps FeatureVector -> DepthTrajectory.
 
-Only the explicit baseline lives here today. Lane B's LightGBM plugs in behind the same
-`forecast(fv) -> DepthTrajectory` call, with SHAP values as `drivers`.
+LightGBM quantile model (app/models/lightgbm_model.py) when its file exists, else the explicit persistence baseline.
 """
 
 from datetime import timedelta
@@ -31,4 +30,10 @@ def persistence_baseline(fv: FeatureVector, horizon_h: int = HORIZON_H) -> Depth
     )
 
 
-forecast = persistence_baseline
+from app.models.lightgbm_model import Forecaster  # noqa: E402
+
+_lgbm = Forecaster.load()  # None if models_store/lightgbm_v1.joblib is missing: fall back to the baseline
+
+
+def forecast(fv: FeatureVector, horizon_h: int = HORIZON_H) -> DepthTrajectory:
+    return _lgbm.forecast(fv, horizon_h) if _lgbm else persistence_baseline(fv, horizon_h)

@@ -46,6 +46,8 @@ class Station(Base):
     lon: Mapped[float] = mapped_column(Float)
     lat: Mapped[float] = mapped_column(Float)
     zone_id: Mapped[str | None] = mapped_column(ForeignKey("zones.id"))  # place containing it, if any
+    qc_ok: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # False = failed the gauge QC screen
+    qc_reason: Mapped[str | None] = mapped_column(String(80))
 
 
 class Event(Base):
