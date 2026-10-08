@@ -17,6 +17,7 @@ dependencies = [
   "rasterio",
   "scikit-learn>=1.9.1",
   "aiosqlite>=0.22.1",
+  "pyarrow>=25.0.1",
 ]
 # ponytail: tensorflow (CASPIAN) added only if the Phase 7 gate passes
 
