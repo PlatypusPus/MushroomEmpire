@@ -4,7 +4,7 @@ import { toast } from "sonner"
 // Accounts client. The session token (our own short-lived JWT, never the Google one) lives in localStorage.
 const KEY = "kadal.token"
 
-export interface Me { id: number; email: string; name: string; email_alerts: boolean; zone_ids: string[] }
+export interface Me { id: number; email: string; name: string; email_alerts: boolean; zone_ids: string[]; whatsapp: string | null; whatsapp_available: boolean }
 export interface Delivery { id: number; kind: "replay" | "live"; zone_id: string | null; title: string; body: string; created_at: string; status: string }
 
 export const token = {
@@ -31,6 +31,9 @@ export const account = {
   setPrefs: (email_alerts: boolean) => call<{ email_alerts: boolean }>("/me/prefs", { method: "PUT", body: JSON.stringify({ email_alerts }) }),
   alerts: () => call<Delivery[]>("/me/alerts"),
   remove: () => call<void>("/me", { method: "DELETE" }),
+  whatsappStart: (number: string) => call<{ sent_to: string }>("/me/whatsapp", { method: "POST", body: JSON.stringify({ number }) }),
+  whatsappVerify: (code: string) => call<{ whatsapp: string }>("/me/whatsapp/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  whatsappRemove: () => call<void>("/me/whatsapp", { method: "DELETE" }),
   testEmail: () => call<{ status: "sent" | "outbox" | "failed"; to: string }>("/me/test-email", { method: "POST" }),
 }
 

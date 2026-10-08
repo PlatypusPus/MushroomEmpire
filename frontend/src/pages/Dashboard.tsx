@@ -9,11 +9,12 @@ import { LiveHazard } from "@/components/live-hazard"
 import { RiskMap } from "@/components/risk-map"
 import { SectionCards } from "@/components/section-cards"
 import { TimeSlider } from "@/components/time-slider"
-import { ZonePanel } from "@/components/zone-panel"
+import { LivePlacePanel, ZonePanel } from "@/components/zone-panel"
 import { useReplayStore } from "@/state/replayStore"
 
 export default function Dashboard() {
   const selectedZone = useReplayStore((s) => s.selectedZone)
+  const livePoint = useReplayStore((s) => s.livePoint)
   const live = useReplayStore((s) => s.mode) === "live"
   const events = useEvents()
   // fixed default weights here; tuning happens only on the Response priority page
@@ -22,7 +23,11 @@ export default function Dashboard() {
 
   // Esc clears the selected zone
   React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && useReplayStore.getState().select(null)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      useReplayStore.getState().select(null)
+      useReplayStore.getState().setLivePoint(null)
+    }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [])
@@ -44,7 +49,10 @@ export default function Dashboard() {
             {!live && <TimeSlider ticks={ticks} />}
           </div>
           {live ? (
-            <LiveHazard />
+            <div className="flex flex-col gap-4">
+              {livePoint && <LivePlacePanel key={`${livePoint.lat},${livePoint.lon}`} lat={livePoint.lat} lon={livePoint.lon} />}
+              <LiveHazard />
+            </div>
           ) : (
             <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} />
           )}

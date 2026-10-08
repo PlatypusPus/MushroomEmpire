@@ -22,7 +22,7 @@ const ANIM_ROWS: { key: MapToggleKey; label: string; desc: string }[] = [
 ]
 
 /** Single toggle panel for every layer and animation on the map. */
-export function MapToggles() {
+export function MapToggles({ live }: { live: boolean }) {
   return (
     <MapControlContainer className="top-1 right-1">
       <Popover>
@@ -41,10 +41,16 @@ export function MapToggles() {
           <LayersIcon />
         </PopoverTrigger>
         <PopoverContent align="end" side="bottom" className="z-1000 w-72">
-          <ToggleSection title="Layers" rows={LAYER_ROWS} />
-          <div className="mt-2 border-t pt-2">
-            <ToggleSection title="Animations" rows={ANIM_ROWS} />
-          </div>
+          {live ? (
+            <ToggleSection title="Live layers" rows={[{ key: "zones", label: "Places", desc: "The South Florida places we cover in detail" }, ...LAYER_ROWS.filter((r) => r.key !== "zones")]} />
+          ) : (
+            <>
+              <ToggleSection title="Layers" rows={LAYER_ROWS.filter((r) => r.key === "zones")} />
+              <div className="mt-2 border-t pt-2">
+                <ToggleSection title="Animations" rows={ANIM_ROWS} />
+              </div>
+            </>
+          )}
         </PopoverContent>
       </Popover>
     </MapControlContainer>

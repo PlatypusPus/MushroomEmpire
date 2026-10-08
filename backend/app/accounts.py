@@ -9,6 +9,8 @@
     live:   an official NWS/NHC watch or warning is active for the county of a zone the user follows (not from the model)
 * (user, key) is unique, so polling and replay scrubbing never notify twice. New alerts for a user go out as ONE email per run.
 * No SMTP configured: the mail is written to backend/outbox/ and recorded as status "outbox".
+* WhatsApp: optional second channel through the Baileys bridge (whatsapp-bridge/). A user's number is stored only after they
+  type back a code we sent to it, so nobody can point alerts at someone else's phone.
 """
 import asyncio
 import base64
@@ -95,7 +97,8 @@ CurrentUser = Annotated[User, Depends(current_user)]
 
 
 def _user_json(u: User, zone_ids: list[str]) -> dict:
-    return {"id": u.id, "email": u.email, "name": u.name, "email_alerts": u.email_alerts, "zone_ids": zone_ids}
+    return {"id": u.id, "email": u.email, "name": u.name, "email_alerts": u.email_alerts, "zone_ids": zone_ids,
+            "whatsapp": u.whatsapp, "whatsapp_available": bool(settings.whatsapp_bridge_url)}
 
 
 async def _zone_ids(db, uid: int) -> list[str]:
@@ -254,6 +257,74 @@ async def test_email(user: CurrentUser) -> dict:
     return {"status": status, "to": user.email}
 
 
+# ------------------------------------------------------------------ WhatsApp number: send a code, type it back
+WA_CODE_TTL_S = 600
+WA_MAX_TRIES = 5
+_wa_pending: dict[int, dict] = {}  # ponytail: in-memory, a backend restart just means "send a new code"
+_last_wa: dict[int, float] = {}
+
+
+class WaNumber(BaseModel):
+    number: str = Field(max_length=32)
+
+
+class WaCode(BaseModel):
+    code: str = Field(max_length=12)
+
+
+def wa_digits(number: str) -> str:
+    """'+1 (305) 555-0100' -> '13055550100'. Full international number, country code first, 8 to 15 digits (E.164)."""
+    d = "".join(c for c in number if c.isdigit())
+    if not 8 <= len(d) <= 15 or d.startswith("0"):
+        raise HTTPException(422, "enter the full number with country code, e.g. +1 305 555 0100")
+    return d
+
+
+@router.post("/me/whatsapp")
+async def whatsapp_start(req: WaNumber, user: CurrentUser) -> dict:
+    """Send a 6-digit code to the number; it is linked only after /me/whatsapp/verify. One code per minute per user."""
+    if not settings.whatsapp_bridge_url:
+        raise HTTPException(503, "WhatsApp alerts are not configured on this server")
+    number = wa_digits(req.number)
+    now = time.monotonic()
+    wait = TEST_COOLDOWN_S - (now - _last_wa.get(user.id, -1e9))
+    if wait > 0:
+        raise HTTPException(429, f"wait {int(wait) + 1}s before requesting another code")
+    _last_wa[user.id] = now
+    code = f"{secrets.randbelow(10**6):06d}"
+    status = await send_whatsapp(number, f"Your KADAL verification code is {code}. It expires in 10 minutes. "
+                                         "If you did not ask for flood alerts, ignore this message.")
+    if status != "sent":
+        raise HTTPException(502, "could not send to that number. Is it on WhatsApp?")
+    _wa_pending[user.id] = {"number": number, "hash": hashlib.sha256(code.encode()).hexdigest(), "exp": now + WA_CODE_TTL_S, "tries": 0}
+    return {"sent_to": number}
+
+
+@router.post("/me/whatsapp/verify")
+async def whatsapp_verify(req: WaCode, user: CurrentUser) -> dict:
+    p = _wa_pending.get(user.id)
+    if p is None or time.monotonic() > p["exp"] or p["tries"] >= WA_MAX_TRIES:
+        _wa_pending.pop(user.id, None)
+        raise HTTPException(410, "code expired, request a new one")
+    p["tries"] += 1
+    if not secrets.compare_digest(p["hash"], hashlib.sha256(req.code.strip().encode()).hexdigest()):
+        raise HTTPException(422, "wrong code")
+    del _wa_pending[user.id]
+    async with SessionLocal() as db:
+        u = await db.get(User, user.id)
+        u.whatsapp = p["number"]
+        await db.commit()
+    return {"whatsapp": p["number"]}
+
+
+@router.delete("/me/whatsapp", status_code=204)
+async def whatsapp_remove(user: CurrentUser) -> None:
+    async with SessionLocal() as db:
+        u = await db.get(User, user.id)
+        u.whatsapp = None
+        await db.commit()
+
+
 @router.delete("/me", status_code=204)
 async def delete_me(user: CurrentUser) -> None:
     async with SessionLocal() as db:
@@ -327,6 +398,20 @@ async def send_email(to: str, subject: str, body: str) -> str:
         return "failed"
 
 
+async def send_whatsapp(to: str, text: str) -> str:
+    """Through the Baileys bridge. 'sent' or 'failed'; never raises, a WhatsApp hiccup must not lose the email or the record."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.post(f"{settings.whatsapp_bridge_url.rstrip('/')}/send", json={"to": to, "text": text},
+                             headers={"Authorization": f"Bearer {settings.whatsapp_bridge_token}"})
+        if r.status_code == 200:
+            return "sent"
+        log.warning("whatsapp bridge refused: %s", r.status_code)
+    except httpx.HTTPError as e:
+        log.warning("whatsapp bridge unreachable: %s", type(e).__name__)
+    return "failed"
+
+
 async def deliver(items: list[dict]) -> int:
     """Record new deliveries (skipping ones already recorded), then email each user once. Returns how many were new."""
     if not items:
@@ -345,9 +430,12 @@ async def deliver(items: list[dict]) -> int:
         for uid, its in new_by_user.items():
             u = users[uid]
             status = "muted"
+            title = its[0]["title"] if len(its) == 1 else f"{len(its)} new flood alerts for your places"
+            text = "\n\n".join(f"{i['title']}\n{i['body']}" for i in its)
             if u.email_alerts:
-                title = its[0]["title"] if len(its) == 1 else f"{len(its)} new flood alerts for your places"
-                status = await send_email(u.email, title, "\n\n".join(f"{i['title']}\n{i['body']}" for i in its))
+                status = await send_email(u.email, title, text)
+            if u.whatsapp and settings.whatsapp_bridge_url:
+                status += "+wa_" + await send_whatsapp(u.whatsapp, text)
             for it in its:
                 db.add(AlertDelivery(user_id=uid, key=it["key"], kind=it["kind"], zone_id=it["zone_id"], title=it["title"], body=it["body"],
                                      created_at=now, status=status))

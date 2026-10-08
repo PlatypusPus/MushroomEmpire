@@ -195,6 +195,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True)
     name: Mapped[str] = mapped_column(String(120), default="")
     email_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
+    whatsapp: Mapped[str | None] = mapped_column(String(15), nullable=True)  # verified number, digits only; set = WhatsApp alerts on
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -216,4 +217,4 @@ class AlertDelivery(Base):
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    status: Mapped[str] = mapped_column(String(12))  # sent | outbox | failed | muted
+    status: Mapped[str] = mapped_column(String(24))  # email: sent | outbox | failed | muted, plus "+wa_sent" / "+wa_failed"

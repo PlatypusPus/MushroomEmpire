@@ -157,6 +157,47 @@ async def zone_alert(zone_id: str, issue_ts: datetime | None = None, event_id: i
     return {"zone_id": zone_id, "alert_text": p.alert_text, "onset": p.onset, "peak": p.peak, "is_simulated": p.is_simulated}
 
 
+@router.get("/zones/{zone_id}/mitigation")
+async def zone_mitigation(zone_id: str, issue_ts: datetime | None = None, event_id: int | None = None) -> dict:
+    """What people in this place can do now, who to call, nearest potential shelters and services. Recommends only."""
+    from app.agents.mitigation import advise
+
+    p = await payload(zone_id, event_id, issue_ts)
+    _, snap = await active(event_id)
+    return advise(p, next(z for z in snap.zones if z["id"] == zone_id))
+
+
+@router.get("/zones/{zone_id}/mitigation/live")
+async def zone_mitigation_live(zone_id: str) -> dict:
+    """Live dashboard: advice from the official NWS level for the place's county (no model forecast runs live). Recommends only."""
+    from app import context
+    from app.agents.mitigation import advise_live
+
+    _, snap = await active(None)  # places are the same in every event; only the geometry and county are used
+    zone = next((z for z in snap.zones if z["id"] == zone_id), None)
+    if zone is None:
+        raise HTTPException(404, f"unknown zone {zone_id}")
+    ctx = await context.get_context()
+    return advise_live(zone, (ctx.get("counties") or {}).get(zone.get("county")))
+
+
+@router.get("/mitigation/live/point")
+async def mitigation_live_point(lat: Annotated[float, Query(ge=17, le=72)], lon: Annotated[float, Query(ge=-180, le=-64)]) -> dict:
+    """Live dashboard, any clicked US point: inside one of our places -> that place's advice; elsewhere -> advice from the official
+    NWS alerts at the point and nearby OSM facilities. Storms do not stop at our region's edge. Recommends only."""
+    from shapely.geometry import Point, shape
+
+    from app import live_point
+    from app.agents.mitigation import advise_point
+
+    _, snap = await active(None)
+    pt = Point(lon, lat)
+    zone = next((z for z in snap.zones if shape(z["geometry"]).contains(pt)), None)
+    if zone is not None:
+        return {**await zone_mitigation_live(zone["id"]), "point": {"lat": lat, "lon": lon}}
+    return advise_point(lat, lon, *await live_point.lookup(lat, lon))
+
+
 _briefs: dict[tuple, dict] = {}
 _briefs_failed_at: dict[tuple, float] = {}  # template fallbacks cool down instead of refiring the LLM on every select
 _briefs_inflight: dict[tuple, "asyncio.Task"] = {}  # one GPU call per key: concurrent selects share it

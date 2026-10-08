@@ -33,7 +33,7 @@ TTL = {"alerts": 120, "storms": 600, "bulletins": 600, "forecast": 900}  # secon
 STALE_FACTOR = 5  # older than TTL x 5 = too old to trust (alerts: 10 minutes)
 CACHE_FILE = Path(__file__).resolve().parents[1] / "cache" / "context_last.json"
 
-LEVELS = {0: "none", 1: "advisory or statement", 2: "watch", 3: "warning", 4: "emergency"}
+LEVELS = {0: "none", 1: "advisory or statement", 2: "watch", 3: "warning", 4: "most serious warning"}  # 4: hurricane, storm surge, extreme wind warnings or a flash flood emergency
 # NWS event name -> level. A heuristic ordering of official products, not a calibrated probability.
 EVENT_LEVEL = {
     "coastal flood statement": 1, "flood statement": 1, "flood advisory": 1, "coastal flood advisory": 1, "tropical cyclone local statement": 1,

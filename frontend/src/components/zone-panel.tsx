@@ -1,5 +1,5 @@
-import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type TimeWindow, type ZonePayload } from "@/api/client"
-import { useZoneBriefing } from "@/api/hooks"
+import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type Mitigation, type TimeWindow, type ZonePayload } from "@/api/client"
+import { useLiveMitigation, useMitigation, useZoneBriefing } from "@/api/hooks"
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -88,6 +88,80 @@ function Facilities({ items }: { items: ExposureItem[] }) {
   )
 }
 
+const NEAR_LABEL: Record<string, string> = { shelter: "Potential shelters", hospital: "Hospital", fire_station: "Fire station", police: "Police" }
+const directions = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
+
+function WhatToDo({ zone }: { zone: ZonePayload }) {
+  const eventId = useReplayStore((s) => s.eventId)
+  const m = useMitigation(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts })
+  return <MitigationView data={m.data} loading={m.isLoading} />
+}
+
+/** Mitigation agent output: what to do now, who to call, nearest potential shelters and services. Recommends only. */
+function MitigationView({ data: d, loading }: { data: Mitigation | undefined; loading: boolean }) {
+  if (loading) return <p className="text-sm text-muted-foreground">Loading advice…</p>
+  if (!d) return <p className="text-sm text-destructive">Could not load advice for this place.</p>
+  return (
+    <div className="flex flex-col gap-4 text-sm">
+      {d.is_simulated && <p className="text-[11px] text-muted-foreground">Advice for a replay of a past storm, shown as practice.</p>}
+      <ol className="flex list-decimal flex-col gap-1.5 pl-5">{d.steps.map((s) => <li key={s}>{s}</li>)}</ol>
+      <div>
+        <div className="mb-1 text-[11px] text-muted-foreground">Who to call</div>
+        <ul className="flex flex-col gap-1">
+          {d.contacts.map((c) => (
+            <li key={c.name} className="flex flex-wrap items-baseline justify-between gap-x-2">
+              <span>{c.url ? <a href={c.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{c.name}</a> : c.name}</span>
+              <a href={`tel:${c.phone.split(" or ").pop()!.replace(/[^\d]/g, "")}`} className="shrink-0 font-medium tabular-nums">{c.phone}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <div className="mb-1 text-[11px] text-muted-foreground">Nearest places</div>
+        <ul className="flex flex-col gap-1">
+          {(["shelter", "hospital", "fire_station", "police"] as const).flatMap((k) =>
+            d.nearest[k].map((p) => (
+              <li key={k + p.name} className="flex items-baseline justify-between gap-2">
+                <span className="min-w-0 truncate"><span className="text-muted-foreground">{NEAR_LABEL[k]}:</span> {p.name}</span>
+                <a href={directions(p.lat, p.lon)} target="_blank" rel="noreferrer" className="shrink-0 tabular-nums underline underline-offset-2">{p.km} km</a>
+              </li>
+            ))
+          )}
+        </ul>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">{d.shelter_note} {d.distance_note}</p>
+      </div>
+    </div>
+  )
+}
+
+/** Live dashboard: advice where the map was clicked, following the official warnings there (no live forecast exists). */
+export function LivePlacePanel({ lat, lon }: { lat: number; lon: number }) {
+  const m = useLiveMitigation(lat, lon)
+  const d = m.data
+  const color = d && d.level !== "unknown" ? SEVERITY_COLOR[d.level] : UNKNOWN_COLOR
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl">{d?.name ?? "Place"}</CardTitle>
+        <CardDescription>{d?.county ? `${d.county} County · ` : ""}What to do now, based on official warnings</CardDescription>
+        <CardAction>
+          <Badge variant="outline" className="capitalize" style={{ borderColor: color }}>Official: {d?.official?.label ?? "…"}</Badge>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {d?.official && d.official.active.length > 0 && (
+          <div className="rounded-md border-l-4 bg-muted/40 p-3 text-sm" style={{ borderColor: color }}>
+            Active now: {d.official.active.join(", ")}
+          </div>
+        )}
+        <MitigationView data={d} loading={m.isLoading} />
+        {d?.nearest_failed && <p className="text-[11px] text-destructive">Could not look up nearby shelters and services right now. That does not mean there are none.</p>}
+        <p className="text-[11px] text-muted-foreground">From National Weather Service warnings{d?.county ? " for the county" : " at this spot"}, not from our flood forecast. Press Esc to close.</p>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean }) {
   if (!zone) {
     return (
@@ -124,6 +198,7 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
         <Tabs defaultValue="why">
           <TabsList>
             <TabsTrigger value="why">Why</TabsTrigger>
+            <TabsTrigger value="todo">What to do</TabsTrigger>
             <TabsTrigger value="facilities">Facilities ({zone.exposure.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="why" className="pt-2">
@@ -142,6 +217,9 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
               <p className="text-sm text-muted-foreground">There is no working water sensor near this place, so we do not know the risk.</p>
             )}
             {zone.model && <p className="mt-2 text-[11px] text-muted-foreground">Model {zone.model}</p>}
+          </TabsContent>
+          <TabsContent value="todo" className="pt-2">
+            <WhatToDo zone={zone} />
           </TabsContent>
           <TabsContent value="facilities" className="pt-2">
             <Facilities items={zone.exposure} />

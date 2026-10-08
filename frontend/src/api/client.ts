@@ -68,6 +68,23 @@ export interface ZonePayload {
   explanation: string | null // one plain sentence built from the reasons
 }
 
+export interface NearbyPlace { name: string; km: number; lat: number; lon: number }
+/** GET /zones/{id}/mitigation: what to do now, who to call, nearest potential shelters. Recommends only. */
+export interface Mitigation {
+  zone_id: string
+  name: string
+  county: string | null
+  level: Severity | "unknown"
+  steps: string[]
+  contacts: { name: string; phone: string; url?: string }[]
+  nearest: Record<"shelter" | "hospital" | "fire_station" | "police", NearbyPlace[]>
+  shelter_note: string
+  distance_note: string
+  is_simulated: boolean
+  official?: { level: number | null; label: string; active: string[] } // live only: the NWS level the advice follows
+  nearest_failed?: boolean // live point: the nearby-places lookup failed (not "there are none")
+}
+
 export interface AlertEvent {
   issue_ts: string
   zone_id: string
@@ -273,6 +290,9 @@ export const api = {
     apiFetch<{ zone_id: string; text: string; source: "llm" | "template"; model: string | null; reason: string | null }>(
       `/zones/${zone_id}/briefing${params({ ...q })}`
     ),
+  zoneMitigation: (zone_id: string, q: SnapshotQuery = {}) =>
+    apiFetch<Mitigation>(`/zones/${zone_id}/mitigation${params({ ...q })}`),
+  mitigationAt: (lat: number, lon: number) => apiFetch<Mitigation>(`/mitigation/live/point${params({ lat: lat.toFixed(4), lon: lon.toFixed(4) })}`),
   replayAlerts: (session_id: string, upto: number) =>
     apiFetch<AlertEvent[]>(`/replay/${session_id}/alerts${params({ upto })}`),
   replayStart: (event_id: number, step_h: number) =>

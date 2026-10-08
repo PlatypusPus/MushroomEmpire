@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
     live_alert_poll_s: int = 600
+    # WhatsApp alerts via the Baileys bridge (whatsapp-bridge/). Off while the URL is empty.
+    whatsapp_bridge_url: str = ""  # e.g. http://127.0.0.1:8787
+    whatsapp_bridge_token: str = ""  # same value as BRIDGE_TOKEN in the bridge
 
 
 settings = Settings()

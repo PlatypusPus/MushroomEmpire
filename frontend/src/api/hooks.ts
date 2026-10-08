@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
@@ -60,7 +60,8 @@ export function useAlertFeed(session_id: string | undefined, upto: number) {
     queryKey: ["alerts", session_id, upto],
     queryFn: () => api.replayAlerts(session_id!, upto),
     enabled: session_id != null,
-    placeholderData: keepPreviousData,
+    // hold the old feed only while scrubbing the same session; never carry one event's alerts into another
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === session_id ? prev : undefined),
     retry: 1,
   })
 }
@@ -81,7 +82,8 @@ export function useTick(event_id: number, issue_ts: string | undefined, weights:
     queryKey: ["tick", event_id, issue_ts, weights],
     queryFn: () => api.ranking({ event_id, issue_ts, ...weights }),
     enabled: issue_ts != null,
-    placeholderData: keepPreviousData,
+    // hold the old frame only within the same event; a new event starts blank instead of showing the last storm's zones
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === event_id ? prev : undefined),
     retry: 1,
   })
 }
@@ -121,6 +123,27 @@ export function useZonePayload(zone_id: string | undefined, q: SnapshotQuery = {
     queryKey: ["zone", zone_id, q.event_id, q.issue_ts],
     queryFn: () => api.zone(zone_id!, q),
     enabled: zone_id != null,
+    retry: 1,
+  })
+}
+
+/** Mitigation advice for the selected place at the shown time (fetched when its tab mounts). */
+export function useMitigation(zone_id: string, q: SnapshotQuery) {
+  return useQuery({
+    queryKey: ["mitigation", zone_id, q.event_id, q.issue_ts],
+    queryFn: () => api.zoneMitigation(zone_id, q),
+    staleTime: Infinity,
+    retry: 1,
+  })
+}
+
+/** Live dashboard: advice at a clicked point, from the official warnings there (our places use their county); refreshes like the live context. */
+export function useLiveMitigation(lat: number, lon: number) {
+  return useQuery({
+    queryKey: ["mitigation-live", lat.toFixed(4), lon.toFixed(4)],
+    queryFn: () => api.mitigationAt(lat, lon),
+    // the public OSM server sheds load at times: retry the nearby-places lookup soon instead of in 5 min
+    refetchInterval: (q) => (q.state.data?.nearest_failed ? 30 * 1000 : 5 * 60 * 1000),
     retry: 1,
   })
 }

@@ -203,3 +203,45 @@ def test_smtp_uses_implicit_tls_on_465_and_starttls_otherwise(monkeypatch):
     monkeypatch.setattr(settings, "smtp_port", 465)
     A._send_smtp("a@b.co", "s", "b")
     assert calls == ["S", "starttls", "sent", "SSL", "sent"]
+
+
+def test_whatsapp_number_links_only_after_the_code_sent_to_it_comes_back(secret, monkeypatch):
+    user = type("U", (), {"id": 11, "email": "me@example.com", "whatsapp": None})()
+    sent = []
+
+    async def fake_send(to, text):
+        sent.append((to, text))
+        return "sent"
+
+    class FakeDb:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, model, uid): return user
+        async def commit(self): pass
+
+    async def fake_user():
+        return user
+    monkeypatch.setattr(settings, "whatsapp_bridge_url", "http://127.0.0.1:8787")
+    monkeypatch.setattr(A, "send_whatsapp", fake_send)
+    monkeypatch.setattr(A, "SessionLocal", FakeDb)
+    app.dependency_overrides[A.current_user] = fake_user
+    A._last_wa.clear()
+    A._wa_pending.clear()
+    try:
+        c = client()
+        assert c.post("/api/me/whatsapp", json={"number": "555"}).status_code == 422  # not a full international number
+        assert c.post("/api/me/whatsapp", json={"number": "+1 (305) 555-0100"}).json() == {"sent_to": "13055550100"}
+        assert c.post("/api/me/whatsapp", json={"number": "+1 305 555 0100"}).status_code == 429  # one code a minute
+        code = sent[0][1].split("code is ")[1][:6]
+        assert c.post("/api/me/whatsapp/verify", json={"code": "000000" if code != "000000" else "111111"}).status_code == 422
+        assert user.whatsapp is None  # a wrong code links nothing
+        assert c.post("/api/me/whatsapp/verify", json={"code": code}).json() == {"whatsapp": "13055550100"}
+        assert user.whatsapp == "13055550100" and sent[0][0] == "13055550100"
+        assert c.post("/api/me/whatsapp/verify", json={"code": code}).status_code == 410  # single use
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_whatsapp_bridge_down_reports_failed_instead_of_raising(monkeypatch):
+    monkeypatch.setattr(settings, "whatsapp_bridge_url", "http://127.0.0.1:9")  # nothing listens on the discard port
+    assert asyncio.run(A.send_whatsapp("13055550100", "hi")) == "failed"

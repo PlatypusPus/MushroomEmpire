@@ -9,6 +9,7 @@ import { useReplayStore } from "@/state/replayStore"
 
 const SELECT_RING = "#3b82f6"
 const DARK_OUTLINE = "#000000" // dark mode: black outlines read better against the bright fills
+const LIVE_OUTLINE = "#64748b" // live: neutral outlines only, there is no live flood forecast to colour by
 
 function severityColor(sev: ZonePayload["severity"] | undefined): string {
   return sev ? SEVERITY_COLOR[sev] : UNKNOWN_COLOR
@@ -21,7 +22,8 @@ function zoneIdOf(l: L.Layer): string | undefined {
   return props?.zone_id
 }
 
-function tooltipText(name: string, p: ZonePayload | undefined): string {
+function tooltipText(name: string, p: ZonePayload | undefined, live: boolean): string {
+  if (live) return `${name} · click for what to do`
   if (!p) return `${name} · insufficient data`
   const sev = p.severity ?? "insufficient data"
   const prob = p.probability == null ? "n/a" : `${Math.round(p.probability * 100)}%`
@@ -30,8 +32,8 @@ function tooltipText(name: string, p: ZonePayload | undefined): string {
 
 /** Zone polygons as a single imperative GeoJSON layer (in-place setStyle keeps
  * CSS fill transitions alive across replay ticks). Toggles: zones, pulse,
- * spotlight, transitions. */
-export function ZoneLayer({ zones, payloads }: { zones: Zone[]; payloads: ZonePayload[] }) {
+ * spotlight, transitions. `live`: neutral clickable outlines, no risk colours or animations. */
+export function ZoneLayer({ zones, payloads, live = false }: { zones: Zone[]; payloads: ZonePayload[]; live?: boolean }) {
   const map = useMap()
   const selected = useReplayStore((s) => s.selectedZone)
   const select = useReplayStore((s) => s.select)
@@ -44,15 +46,16 @@ export function ZoneLayer({ zones, payloads }: { zones: Zone[]; payloads: ZonePa
 
   const layerRef = React.useRef<L.GeoJSON | null>(null)
   const idsRef = React.useRef<string>("")
-  const stateRef = React.useRef({ zones, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark })
-  stateRef.current = { zones, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark }
+  const stateRef = React.useRef({ zones, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark, live })
+  stateRef.current = { zones, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark, live }
   const skipDeselect = React.useRef(false)
 
   const styleFor = React.useCallback((zoneId: string): L.PathOptions => {
-    const { payloads: pl, selected: sel, isDark: dark } = stateRef.current
+    const { payloads: pl, selected: sel, isDark: dark, live: lv } = stateRef.current
+    const isSel = sel === zoneId
+    if (lv) return { fillColor: LIVE_OUTLINE, fillOpacity: isSel ? 0.25 : 0.06, color: isSel ? SELECT_RING : LIVE_OUTLINE, weight: isSel ? 3 : 1, opacity: 0.9 }
     const p = pl.find((x) => x.zone_id === zoneId)
     const c = severityColor(p?.severity)
-    const isSel = sel === zoneId
     return {
       fillColor: c,
       fillOpacity: 0.5,
@@ -63,14 +66,14 @@ export function ZoneLayer({ zones, payloads }: { zones: Zone[]; payloads: ZonePa
   }, [])
 
   const applyClasses = React.useCallback((layer: L.Layer, zoneId: string) => {
-    const { payloads: pl, pulseOn: pu, spotlightOn: sp, transitionsOn: tr } = stateRef.current
+    const { payloads: pl, pulseOn: pu, spotlightOn: sp, transitionsOn: tr, live: lv } = stateRef.current
     const el = (layer as L.Path).getElement?.()
     if (!el) return
     const p = pl.find((x) => x.zone_id === zoneId)
     el.classList.add("zone-path")
     el.classList.toggle("zone-no-anim", !tr)
-    el.classList.toggle("zone-alert", pu && !!p?.is_alert)
-    el.classList.toggle("zone-spot", sp && p?.rank === 1)
+    el.classList.toggle("zone-alert", !lv && pu && !!p?.is_alert)
+    el.classList.toggle("zone-spot", !lv && sp && p?.rank === 1)
   }, [])
 
   // create once
@@ -80,7 +83,7 @@ export function ZoneLayer({ zones, payloads }: { zones: Zone[]; payloads: ZonePa
       onEachFeature: (f, layer) => {
         const zoneId = (f.properties as { zone_id: string; name: string }).zone_id
         const name = (f.properties as { zone_id: string; name: string }).name
-        layer.bindTooltip(() => tooltipText(name, stateRef.current.payloads.find((x) => x.zone_id === zoneId)), {
+        layer.bindTooltip(() => tooltipText(name, stateRef.current.payloads.find((x) => x.zone_id === zoneId), stateRef.current.live), {
           sticky: true,
           direction: "top",
         })
@@ -149,7 +152,7 @@ export function ZoneLayer({ zones, payloads }: { zones: Zone[]; payloads: ZonePa
   // data / selection / animation toggles: restyle in place (transitions animate)
   React.useEffect(() => {
     sync()
-  }, [sync, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark])
+  }, [sync, payloads, selected, pulseOn, spotlightOn, transitionsOn, isDark, live])
 
   // zones master toggle: attach/detach
   React.useEffect(() => {

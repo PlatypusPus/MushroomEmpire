@@ -1,8 +1,8 @@
-// Account: sign in or sign up with Google, choose the places you follow, test your email, review what we sent.
+// Account: sign in or sign up with Google, choose the places you follow, test your email, link WhatsApp, review what we sent.
 // Replay alerts are labelled simulated here and in the email itself.
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { BellIcon, CheckIcon, MailIcon, MapPinIcon, ShieldCheckIcon, XIcon } from "lucide-react"
+import { BellIcon, CheckIcon, MailIcon, MapPinIcon, MessageCircleIcon, ShieldCheckIcon, XIcon } from "lucide-react"
 import { toast } from "sonner"
 import { account, token, useMe, useSignOut, type Delivery, type Me } from "@/api/account"
 import { useRegionZones } from "@/api/hooks"
@@ -183,7 +183,75 @@ function Notifications({ me }: { me: Me }) {
   )
 }
 
-const STATUS: Record<string, string> = { sent: "Emailed", outbox: "Saved (email not configured)", muted: "In-app only", failed: "Email failed" }
+const WA_ERRORS: Record<string, string> = {
+  "422": "That does not look right. Use the full number with country code, or check the code.",
+  "429": "Please wait a minute before asking for another code.",
+  "410": "That code expired. Ask for a new one.",
+  "502": "We could not message that number. Is it on WhatsApp?",
+  "503": "WhatsApp is not connected on this server right now.",
+}
+
+function WhatsApp({ me }: { me: Me }) {
+  const qc = useQueryClient()
+  const [number, setNumber] = useState("")
+  const [sentTo, setSentTo] = useState<string | null>(null)
+  const [code, setCode] = useState("")
+  const [busy, setBusy] = useState(false)
+  const run = async (f: () => Promise<unknown>, ok: string) => {
+    setBusy(true)
+    try {
+      await f()
+      toast.success(ok)
+    } catch (e) {
+      toast.error(WA_ERRORS[(e as Error).message] ?? "Something went wrong. Please try again.")
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><MessageCircleIcon className="size-4" /> WhatsApp notifications</CardTitle>
+        <CardDescription>
+          {me.whatsapp ? `Alerts also go to +${me.whatsapp} on WhatsApp.` : "Get the same alerts on WhatsApp. We send a code to check the number is yours."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-row flex-wrap items-center gap-3">
+        {me.whatsapp ? (
+          <Button variant="outline" size="sm" disabled={busy}
+            onClick={() => run(async () => { await account.whatsappRemove(); await qc.invalidateQueries({ queryKey: ["me"] }) }, "WhatsApp alerts off")}>
+            Stop WhatsApp alerts
+          </Button>
+        ) : sentTo ? (
+          <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => {
+            e.preventDefault()
+            run(async () => { await account.whatsappVerify(code); setSentTo(null); setCode(""); await qc.invalidateQueries({ queryKey: ["me"] }) }, "WhatsApp alerts on")
+          }}>
+            <Input className="w-32" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6-digit code"
+              aria-label="Code sent on WhatsApp" value={code} onChange={(e) => setCode(e.target.value)} />
+            <Button size="sm" type="submit" disabled={busy || code.trim().length !== 6}>Confirm</Button>
+            <Button size="sm" variant="ghost" type="button" onClick={() => setSentTo(null)}>Use another number</Button>
+            <span className="text-sm text-muted-foreground">Code sent to +{sentTo}</span>
+          </form>
+        ) : (
+          <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => {
+            e.preventDefault()
+            run(async () => setSentTo((await account.whatsappStart(number)).sent_to), "Code sent. Check WhatsApp.")
+          }}>
+            <Input className="w-56" type="tel" autoComplete="tel" placeholder="+1 305 555 0100" aria-label="WhatsApp number with country code"
+              value={number} onChange={(e) => setNumber(e.target.value)} />
+            <Button size="sm" type="submit" disabled={busy || !number.trim()}>{busy ? "Sending…" : "Send code"}</Button>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+const STATUS: Record<string, string> = {
+  sent: "Emailed", outbox: "Saved (email not configured)", muted: "In-app only", failed: "Email failed",
+  wa_sent: "WhatsApp sent", wa_failed: "WhatsApp failed",
+}
 
 function History() {
   const q = useQuery({ queryKey: ["my-alerts"], queryFn: account.alerts, refetchInterval: 30000 })
@@ -205,7 +273,7 @@ function History() {
               <span className="ml-auto text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</span>
             </div>
             <p className="mt-1 whitespace-pre-line text-muted-foreground">{a.body}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{STATUS[a.status] ?? a.status}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{a.status.split("+").map((st) => STATUS[st] ?? st).join(" · ")}</p>
           </div>
         ))}
       </CardContent>
@@ -279,6 +347,7 @@ export default function Account() {
               </CardContent>
             </Card>
             <Notifications me={u} />
+            {u.whatsapp_available && <WhatsApp me={u} />}
             <Places key={u.zone_ids.join(",")} me={u} />
             <History />
             <DangerZone onDeleted={() => { signOut(); toast("Your account was deleted") }} />

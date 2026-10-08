@@ -12,12 +12,14 @@ interface ReplayState {
   tick: number
   playing: boolean
   selectedZone: string | null
+  livePoint: { lat: number; lon: number } | null // live map: the spot clicked for advice (anywhere, not only our places)
   weights: Weights
   setMode: (m: "live" | "replay") => void
   setEvent: (id: number) => void
   setTick: (i: number) => void
   setPlaying: (p: boolean) => void
   select: (zoneId: string | null) => void
+  setLivePoint: (p: { lat: number; lon: number } | null) => void
   setWeight: (k: keyof Weights, v: number) => void
 }
 
@@ -27,11 +29,13 @@ export const useReplayStore = create<ReplayState>((set) => ({
   tick: 0,
   playing: false,
   selectedZone: null,
+  livePoint: null,
   weights: DEFAULT_WEIGHTS,
-  setMode: (mode) => set({ mode, playing: false, selectedZone: null }),
+  setMode: (mode) => set({ mode, playing: false, selectedZone: null, livePoint: null }),
   setEvent: (eventId) => set({ eventId, mode: "replay", tick: 0, playing: false, selectedZone: null }),
   setTick: (tick) => set({ tick }),
   setPlaying: (playing) => set({ playing }),
   select: (selectedZone) => set({ selectedZone }),
+  setLivePoint: (livePoint) => set({ livePoint }),
   setWeight: (k, v) => set((s) => ({ weights: { ...s.weights, [k]: v } })),
 }))
