@@ -23,17 +23,17 @@ function SignIn({ error }: { error: string | null }) {
     <Card className="max-w-md">
       <CardHeader>
         <CardTitle>Get flood alerts by email</CardTitle>
-        <CardDescription>Continue with Google to sign in or create an account. Pick the places you care about and we email you when they cross the alert threshold or an official warning is issued.</CardDescription>
+        <CardDescription>Sign in or create an account in one step. Pick the places you care about and we email you when they cross the alert threshold or an official warning is issued.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {cfg.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {cfg.isError && <p className="text-sm text-destructive">Could not reach the API.</p>}
-        {cfg.data && !cfg.data.enabled && <p className="text-sm text-muted-foreground">Accounts are not configured on this server (set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and JWT_SECRET).</p>}
-        {cfg.data?.enabled && (
-          <Button render={<a href={cfg.data.login_url} />} size="lg">
-            Continue with Google
+        {cfg.data && !cfg.data.enabled && <p className="text-sm text-muted-foreground">Accounts are not configured on this server (set JWT_SECRET plus a Google or GitHub client id and secret).</p>}
+        {cfg.data?.providers.map((p) => (
+          <Button key={p.id} render={<a href={p.login_url} />} size="lg" className="w-full">
+            Continue with {p.label}
           </Button>
-        )}
+        ))}
         {error && <p className="text-sm text-destructive">{ERRORS[error] ?? "Sign-in failed."}</p>}
       </CardContent>
     </Card>

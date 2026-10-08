@@ -1,9 +1,9 @@
-"""Accounts: Google sign-in, zone subscriptions, alert emails.
+"""Accounts: OAuth sign-in (Google and/or GitHub), zone subscriptions, alert emails.
 
-* Sign-in and sign-up are one flow: Google OAuth 2.0 authorization code + PKCE. /auth/google/start redirects to Google,
-  /auth/google/callback exchanges the code server-side (client secret never reaches the browser), verifies the ID token
-  (signature, audience, email_verified), creates the user on first sign-in, and hands the browser our own short-lived JWT.
-  No passwords are stored.
+* Sign-in and sign-up are one flow: OAuth 2.0 authorization code + PKCE. /auth/<provider>/start redirects to the provider,
+  /auth/<provider>/callback exchanges the code server-side (client secret never reaches the browser), reads a VERIFIED email
+  (Google: signed ID token; GitHub: primary verified address), creates the user on first sign-in, and hands the browser our
+  own short-lived JWT. A provider is on only when its client id and secret are set. No passwords are stored.
 * Alerts, two kinds, always labelled so a replay is never mistaken for a live warning:
     replay: a zone the user follows crossed the validated alert threshold in a (historical, simulated) replay session
     live:   an official NWS/NHC watch or warning is active for the county of a zone the user follows (not from the model)
@@ -40,8 +40,24 @@ OUTBOX = Path(__file__).resolve().parent.parent / "outbox"
 MIN_LIVE_LEVEL = 2  # official watch or warning (levels: 1 advisory, 2 watch, 3 warning, 4 emergency)
 
 
+PROVIDERS = {
+    "google": {"label": "Google", "auth": "https://accounts.google.com/o/oauth2/v2/auth", "token": "https://oauth2.googleapis.com/token",
+               "scope": "openid email profile", "extra": {"prompt": "select_account"}},
+    "github": {"label": "GitHub", "auth": "https://github.com/login/oauth/authorize", "token": "https://github.com/login/oauth/access_token",
+               "scope": "read:user user:email", "extra": {}},
+}
+
+
+def _creds(provider: str) -> tuple[str, str]:
+    return getattr(settings, f"{provider}_client_id"), getattr(settings, f"{provider}_client_secret")
+
+
+def provider_on(provider: str) -> bool:
+    return provider in PROVIDERS and bool(settings.jwt_secret and all(_creds(provider)))
+
+
 def enabled() -> bool:
-    return bool(settings.jwt_secret and settings.google_client_id and settings.google_client_secret)
+    return any(provider_on(p) for p in PROVIDERS)
 
 
 # ------------------------------------------------------------------ sessions
@@ -95,80 +111,108 @@ class Prefs(BaseModel):
     email_alerts: bool
 
 
-GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN = "https://oauth2.googleapis.com/token"
 TX_COOKIE = "kadal_oauth"
 
 
-def _redirect_uri() -> str:
-    return f"{settings.app_origin.rstrip('/')}/api/auth/google/callback"
+def _redirect_uri(provider: str) -> str:
+    return f"{settings.app_origin.rstrip('/')}/api/auth/{provider}/callback"
 
 
 def _back(path: str) -> RedirectResponse:
     r = RedirectResponse(f"{settings.app_origin.rstrip('/')}{path}", status_code=302)
-    r.delete_cookie(TX_COOKIE, path="/api/auth/google")
+    r.delete_cookie(TX_COOKIE, path="/api/auth")
     return r
+
+
+def _provider(provider: str) -> str:
+    if provider not in PROVIDERS:
+        raise HTTPException(404, "unknown provider")
+    if not provider_on(provider):
+        raise HTTPException(503, f"{provider} sign-in is not configured")
+    return provider
 
 
 @router.get("/auth/config")
 async def auth_config() -> dict:
-    """What the sign-in page needs. enabled=false hides the button."""
-    return {"enabled": enabled(), "login_url": "/api/auth/google/start" if enabled() else ""}
+    """What the sign-in page needs: one button per configured provider."""
+    return {"enabled": enabled(), "providers": [{"id": p, "label": PROVIDERS[p]["label"], "login_url": f"/api/auth/{p}/start"} for p in PROVIDERS if provider_on(p)]}
 
 
-@router.get("/auth/google/start")
-async def google_start() -> RedirectResponse:
-    if not enabled():
-        raise HTTPException(503, "accounts are not configured")
+@router.get("/auth/{provider}/start")
+async def oauth_start(provider: str) -> RedirectResponse:
+    _provider(provider)
+    cfg, (cid, _) = PROVIDERS[provider], _creds(provider)
     state, verifier = secrets.token_urlsafe(24), secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-    q = urlencode({"client_id": settings.google_client_id, "redirect_uri": _redirect_uri(), "response_type": "code", "scope": "openid email profile",
-                   "state": state, "code_challenge": challenge, "code_challenge_method": "S256", "prompt": "select_account"})
-    r = RedirectResponse(f"{GOOGLE_AUTH}?{q}", status_code=302)
-    # state + PKCE verifier travel in a short-lived signed HttpOnly cookie, so no server-side session store is needed
-    tx = jwt.encode({"s": state, "v": verifier, "exp": datetime.now(timezone.utc) + timedelta(minutes=10)}, settings.jwt_secret, algorithm="HS256")
-    r.set_cookie(TX_COOKIE, tx, max_age=600, httponly=True, samesite="lax", secure=settings.app_origin.startswith("https"), path="/api/auth/google")
+    q = urlencode({"client_id": cid, "redirect_uri": _redirect_uri(provider), "response_type": "code", "scope": cfg["scope"], "state": state,
+                   "code_challenge": challenge, "code_challenge_method": "S256", **cfg["extra"]})
+    r = RedirectResponse(f"{cfg['auth']}?{q}", status_code=302)
+    # state, provider and the PKCE verifier travel in a short-lived signed HttpOnly cookie, so no server-side session store is needed
+    tx = jwt.encode({"s": state, "v": verifier, "p": provider, "exp": datetime.now(timezone.utc) + timedelta(minutes=10)}, settings.jwt_secret, algorithm="HS256")
+    r.set_cookie(TX_COOKIE, tx, max_age=600, httponly=True, samesite="lax", secure=settings.app_origin.startswith("https"), path="/api/auth")
     return r
 
 
-async def exchange_code(code: str, verifier: str) -> str:
+async def exchange_code(provider: str, code: str, verifier: str) -> dict:
+    cid, secret = _creds(provider)
     async with httpx.AsyncClient(timeout=15) as c:
-        r = await c.post(GOOGLE_TOKEN, data={"grant_type": "authorization_code", "code": code, "code_verifier": verifier, "redirect_uri": _redirect_uri(),
-                                             "client_id": settings.google_client_id, "client_secret": settings.google_client_secret})
+        r = await c.post(PROVIDERS[provider]["token"], headers={"Accept": "application/json"},
+                         data={"grant_type": "authorization_code", "code": code, "code_verifier": verifier, "redirect_uri": _redirect_uri(provider),
+                               "client_id": cid, "client_secret": secret})
     r.raise_for_status()
-    return r.json()["id_token"]
+    body = r.json()
+    if "error" in body:  # GitHub answers 200 with an error body
+        raise ValueError(body["error"])
+    return body
+
+
+async def github_identity(access_token: str) -> dict:
+    h = {"Authorization": f"Bearer {access_token}", "Accept": "application/vnd.github+json"}
+    async with httpx.AsyncClient(timeout=15, base_url="https://api.github.com", headers=h) as c:
+        u, emails = await c.get("/user"), await c.get("/user/emails")
+    u.raise_for_status()
+    emails.raise_for_status()
+    ok = next((e["email"] for e in emails.json() if e.get("primary") and e.get("verified")), None)
+    if not ok:
+        raise ValueError("no verified primary email")
+    return {"sub": f"github:{u.json()['id']}", "email": ok, "name": u.json().get("name") or u.json().get("login") or ""}
+
+
+async def identity(provider: str, code: str, verifier: str) -> dict:
+    tok = await exchange_code(provider, code, verifier)
+    if provider == "github":
+        return await github_identity(tok["access_token"])
+    info = await asyncio.to_thread(verify_google, tok["id_token"])
+    return {"sub": f"google:{info['sub']}", "email": info["email"], "name": info.get("name") or ""}
 
 
 async def login_user(info: dict) -> tuple[User, bool]:
     """Sign in, or sign up on first use. Returns (user, created)."""
     async with SessionLocal() as db:
-        user = (await db.execute(select(User).where(User.google_sub == info["sub"]))).scalar_one_or_none()
+        user = (await db.execute(select(User).where(User.oauth_sub == info["sub"]))).scalar_one_or_none()
         if user is not None:
             return user, False
-        user = User(google_sub=info["sub"], email=info["email"].lower(), name=(info.get("name") or "")[:120], email_alerts=True,
-                    created_at=datetime.now(timezone.utc))
+        user = User(oauth_sub=info["sub"], email=info["email"].lower(), name=info["name"][:120], email_alerts=True, created_at=datetime.now(timezone.utc))
         db.add(user)
         try:
             await db.commit()
-        except IntegrityError:  # same email under another Google subject: never merge accounts silently
+        except IntegrityError:  # same email under another provider or account: never merge accounts silently
             raise ValueError("this email is already registered")
         return user, True
 
 
-@router.get("/auth/google/callback")
-async def google_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None) -> RedirectResponse:
-    if not enabled():
-        raise HTTPException(503, "accounts are not configured")
+@router.get("/auth/{provider}/callback")
+async def oauth_callback(provider: str, request: Request, code: str | None = None, state: str | None = None, error: str | None = None) -> RedirectResponse:
+    _provider(provider)
     if error or not code or not state:  # user pressed cancel, or a forged hit on this URL
         return _back("/account?error=cancelled")
     try:
         tx = jwt.decode(request.cookies.get(TX_COOKIE, ""), settings.jwt_secret, algorithms=["HS256"])
-        if not secrets.compare_digest(tx["s"], state):
+        if tx["p"] != provider or not secrets.compare_digest(tx["s"], state):
             raise ValueError("state mismatch")  # CSRF: the response does not belong to a flow this browser started
-        info = await asyncio.to_thread(verify_google, await exchange_code(code, tx["v"]))
-        user, created = await login_user(info)
+        user, created = await login_user(await identity(provider, code, tx["v"]))
     except Exception as e:
-        log.info("google sign-in rejected: %s", type(e).__name__)
+        log.info("%s sign-in rejected: %s", provider, type(e).__name__)
         return _back("/account?error=signin_failed")
     # fragment, not query: it is never sent to any server or logged; the page moves it to storage and clears it
     return _back(f"/account#token={issue_token(user.id)}&new={int(created)}")

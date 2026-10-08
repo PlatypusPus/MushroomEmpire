@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # Accounts: Google OAuth 2.0 authorization-code flow with PKCE. jwt_secret signs our own session token.
     google_client_id: str = ""
     google_client_secret: str = ""  # confidential: only ever used server-side in the code exchange
+    github_client_id: str = ""
+    github_client_secret: str = ""  # confidential, same rule
     # Origin the BROWSER uses (the Vite dev server proxies /api to the backend). Google redirects back to <this>/api/auth/google/callback.
     app_origin: str = "http://localhost:5173"
     jwt_secret: str = ""  # required to enable accounts; generate with: python -c "import secrets;print(secrets.token_urlsafe(48))"

@@ -191,7 +191,7 @@ class TidePrediction(Base):
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
-    google_sub: Mapped[str] = mapped_column(String(64), unique=True)
+    oauth_sub: Mapped[str] = mapped_column(String(80), unique=True)  # "<provider>:<provider user id>"
     email: Mapped[str] = mapped_column(String(254), unique=True)
     name: Mapped[str] = mapped_column(String(120), default="")
     email_alerts: Mapped[bool] = mapped_column(Boolean, default=True)

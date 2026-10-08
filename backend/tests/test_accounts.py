@@ -22,7 +22,8 @@ FEED = [{"issue_ts": TS, "zone_id": "z1", "alert_text": "High-water episode poss
 def secret(monkeypatch):
     monkeypatch.setattr(settings, "jwt_secret", "test-secret-test-secret-test-secret!!")
     monkeypatch.setattr(settings, "google_client_id", "client.apps.googleusercontent.com")
-    monkeypatch.setattr(settings, "google_client_secret", "")
+    for k in ("google_client_id", "google_client_secret", "github_client_id", "github_client_secret"):
+        monkeypatch.setattr(settings, k, "")
 
 
 def test_replay_plan_only_notifies_followers_and_labels_it_simulated():
@@ -72,78 +73,112 @@ def client():
     return TestClient(app, follow_redirects=False)
 
 
-def test_start_redirects_to_google_with_pkce_state_and_a_signed_httponly_cookie(secret, monkeypatch):
-    monkeypatch.setattr(settings, "google_client_secret", "s")
-    r = client().get("/api/auth/google/start")
+@pytest.fixture(params=["google", "github"])
+def prov(request, secret, monkeypatch):
+    monkeypatch.setattr(settings, f"{request.param}_client_secret", "s")
+    monkeypatch.setattr(settings, f"{request.param}_client_id", "cid")
+    return request.param
+
+
+def test_start_redirects_to_the_provider_with_pkce_state_and_a_signed_httponly_cookie(prov):
+    r = client().get(f"/api/auth/{prov}/start")
     assert r.status_code == 302
     u = urlparse(r.headers["location"])
     q = parse_qs(u.query)
-    assert u.netloc == "accounts.google.com" and q["response_type"] == ["code"] and q["code_challenge_method"] == ["S256"]
-    assert q["redirect_uri"] == ["http://localhost:5173/api/auth/google/callback"] and q["scope"] == ["openid email profile"]
+    assert u.netloc == {"google": "accounts.google.com", "github": "github.com"}[prov] and q["response_type"] == ["code"] and q["code_challenge_method"] == ["S256"]
+    assert q["redirect_uri"] == [f"http://localhost:5173/api/auth/{prov}/callback"]
     tx = A.jwt.decode(r.cookies[A.TX_COOKIE], settings.jwt_secret, algorithms=["HS256"])
-    assert tx["s"] == q["state"][0]
+    assert tx["s"] == q["state"][0] and tx["p"] == prov
     assert base64.urlsafe_b64encode(hashlib.sha256(tx["v"].encode()).digest()).rstrip(b"=").decode() == q["code_challenge"][0]  # challenge matches the verifier
     assert "httponly" in r.headers["set-cookie"].lower()
 
 
-def test_callback_success_signs_up_and_returns_our_token_in_the_fragment(secret, monkeypatch):
-    monkeypatch.setattr(settings, "google_client_secret", "s")
+def test_callback_success_signs_up_and_returns_our_token_in_the_fragment(prov, monkeypatch):
     c = client()
-    start = c.get("/api/auth/google/start")
-    state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+    state = parse_qs(urlparse(c.get(f"/api/auth/{prov}/start").headers["location"]).query)["state"][0]
     seen = {}
 
-    async def fake_exchange(code, verifier):
-        seen["code"], seen["verifier"] = code, verifier
-        return "id-token"
+    async def fake_identity(provider, code, verifier):
+        seen.update(provider=provider, code=code, verifier=verifier)
+        return {"sub": f"{provider}:1", "email": "a@b.co", "name": "A"}
 
     async def fake_login(info):
         return type("U", (), {"id": 42})(), True
-    monkeypatch.setattr(A, "exchange_code", fake_exchange)
-    monkeypatch.setattr(A, "verify_google", lambda t: {"sub": "g1", "email": "a@b.co", "email_verified": True})
+    monkeypatch.setattr(A, "identity", fake_identity)
     monkeypatch.setattr(A, "login_user", fake_login)
-    r = c.get(f"/api/auth/google/callback?code=abc&state={state}")
+    r = c.get(f"/api/auth/{prov}/callback?code=abc&state={state}")
     loc = r.headers["location"]
     assert r.status_code == 302 and loc.startswith("http://localhost:5173/account#token=") and loc.endswith("&new=1")
-    tok = parse_qs(urlparse(loc).fragment)["token"][0]
-    assert A.jwt.decode(tok, settings.jwt_secret, algorithms=["HS256"])["sub"] == "42"
-    assert seen["code"] == "abc" and len(seen["verifier"]) > 40  # the PKCE verifier from the cookie reached the code exchange
+    assert A.jwt.decode(parse_qs(urlparse(loc).fragment)["token"][0], settings.jwt_secret, algorithms=["HS256"])["sub"] == "42"
+    assert seen["provider"] == prov and seen["code"] == "abc" and len(seen["verifier"]) > 40  # the PKCE verifier from the cookie reached the exchange
 
 
-def test_callback_rejects_wrong_state_missing_cookie_and_cancel(secret, monkeypatch):
-    monkeypatch.setattr(settings, "google_client_secret", "s")
+def test_callback_rejects_wrong_state_missing_cookie_cancel_and_a_cookie_from_another_provider(prov, monkeypatch):
     called = []
 
-    async def exchange(code, verifier):
+    async def ident(provider, code, verifier):
         called.append(1)
-        return "x"
-    monkeypatch.setattr(A, "exchange_code", exchange)
+        return {}
+    monkeypatch.setattr(A, "identity", ident)
     c = client()
-    c.get("/api/auth/google/start")
-    assert c.get("/api/auth/google/callback?code=abc&state=forged").headers["location"].endswith("/account?error=signin_failed")
-    assert client().get("/api/auth/google/callback?code=abc&state=s").headers["location"].endswith("/account?error=signin_failed")  # no cookie
-    assert c.get("/api/auth/google/callback?error=access_denied").headers["location"].endswith("/account?error=cancelled")
-    assert called == []  # a forged or cancelled callback never reaches Google
+    c.get(f"/api/auth/{prov}/start")
+    assert c.get(f"/api/auth/{prov}/callback?code=abc&state=forged").headers["location"].endswith("/account?error=signin_failed")
+    assert client().get(f"/api/auth/{prov}/callback?code=abc&state=s").headers["location"].endswith("/account?error=signin_failed")  # no cookie
+    assert c.get(f"/api/auth/{prov}/callback?error=access_denied").headers["location"].endswith("/account?error=cancelled")
+    other = "github" if prov == "google" else "google"
+    monkeypatch.setattr(settings, f"{other}_client_secret", "s")
+    monkeypatch.setattr(settings, f"{other}_client_id", "cid")
+    state = parse_qs(urlparse(c.get(f"/api/auth/{prov}/start").headers["location"]).query)["state"][0]
+    assert c.get(f"/api/auth/{other}/callback?code=abc&state={state}").headers["location"].endswith("/account?error=signin_failed")  # flow started for another provider
+    assert called == []  # a forged, cancelled or mismatched callback never reaches the provider
 
 
-def test_callback_rejects_an_id_token_google_cannot_verify(secret, monkeypatch):
-    monkeypatch.setattr(settings, "google_client_secret", "s")
+def test_callback_rejects_an_identity_the_provider_cannot_verify(prov, monkeypatch):
     c = client()
-    state = parse_qs(urlparse(c.get("/api/auth/google/start").headers["location"]).query)["state"][0]
+    state = parse_qs(urlparse(c.get(f"/api/auth/{prov}/start").headers["location"]).query)["state"][0]
 
-    async def ex(code, verifier):
-        return "id-token"
-
-    def bad(_):
-        raise ValueError("wrong audience")
-    monkeypatch.setattr(A, "exchange_code", ex)
-    monkeypatch.setattr(A, "verify_google", bad)
-    assert c.get(f"/api/auth/google/callback?code=abc&state={state}").headers["location"].endswith("/account?error=signin_failed")
+    async def bad(provider, code, verifier):
+        raise ValueError("no verified primary email")
+    monkeypatch.setattr(A, "identity", bad)
+    assert c.get(f"/api/auth/{prov}/callback?code=abc&state={state}").headers["location"].endswith("/account?error=signin_failed")
 
 
-def test_config_and_start_are_off_until_fully_configured(secret, monkeypatch):
-    assert client().get("/api/auth/config").json() == {"enabled": False, "login_url": ""}  # no client secret yet
-    monkeypatch.setattr(settings, "google_client_secret", "s")
-    assert client().get("/api/auth/config").json() == {"enabled": True, "login_url": "/api/auth/google/start"}
+def test_github_identity_needs_a_verified_primary_email(monkeypatch):
+    class R:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    def run(emails):
+        class C:
+            def __init__(self, **k):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                pass
+
+            async def get(self, path):
+                return R({"id": 7, "login": "octo", "name": None} if path == "/user" else emails)
+        monkeypatch.setattr(A.httpx, "AsyncClient", C)
+        return asyncio.run(A.github_identity("tok"))
+    assert run([{"email": "x@y.co", "primary": False, "verified": True}, {"email": "me@y.co", "primary": True, "verified": True}]) == {"sub": "github:7", "email": "me@y.co", "name": "octo"}
+    with pytest.raises(ValueError):
+        run([{"email": "me@y.co", "primary": True, "verified": False}])  # an unverified address could belong to someone else
+
+
+def test_config_lists_only_configured_providers(secret, monkeypatch):
+    assert client().get("/api/auth/config").json() == {"enabled": False, "providers": []}
+    monkeypatch.setattr(settings, "github_client_id", "cid")
+    monkeypatch.setattr(settings, "github_client_secret", "s")
+    assert client().get("/api/auth/config").json() == {"enabled": True, "providers": [{"id": "github", "label": "GitHub", "login_url": "/api/auth/github/start"}]}
+    assert client().get("/api/auth/google/start").status_code == 503 and client().get("/api/auth/gitlab/start").status_code == 404
     monkeypatch.setattr(settings, "jwt_secret", "")
-    assert client().get("/api/auth/google/start").status_code == 503
+    assert client().get("/api/auth/github/start").status_code == 503
