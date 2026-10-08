@@ -62,10 +62,17 @@ SQL = {
     "regions": "select id::text as id, name, kind, coverage_label as coverage, false as is_simulated from regions where id = :r",
     "zones": """select id, name, county, geometry, elevation_m, hand_depth_m as hand_m, coverage_class,
                        false as is_simulated from zones where region_id = :r order by id""",
-    "stations": """select s.id, s.var, s.zone_id,
-                          case when s.var = 'WATER' then (select percentile_cont(0.95) within group (order by d.value)
-                               from dynamic_features d where d.station_id = s.id and d.ts < :train_end) end as threshold
-                   from stations s join zones z on z.id = s.zone_id where z.region_id = :r""",
+    # lane A's zone_stations links each zone to its nearest gauges (not only gauges inside it); QC-failed gauges skipped
+    "stations": """with linked as (
+                       select zs.zone_id, s.id, s.var from zone_stations zs
+                       join stations s on s.id = zs.station_id join zones z on z.id = zs.zone_id
+                       where z.region_id = :r and s.qc_ok),
+                   thr as (
+                       select d.station_id, percentile_cont(0.95) within group (order by d.value) as threshold
+                       from dynamic_features d
+                       where d.station_id in (select id from linked where var = 'WATER') and d.ts < :train_end
+                       group by d.station_id)
+                   select l.id, l.var, l.zone_id, thr.threshold from linked l left join thr on thr.station_id = l.id""",
     "rows": """select station_id, ts, availability_ts, value, is_simulated from dynamic_features
                where station_id = any(:ids) and ts >= :a and ts <= :b""",
     "assets": """select a.zone_id, a.kind, coalesce(a.name, a.kind) as name, a.confidence
@@ -100,7 +107,7 @@ async def from_db(event_id: int) -> Snapshot:
             regions=await q("regions", r=r),
             zones=zones,
             stations=stations,
-            rows=await q("rows", ids=[x["id"] for x in stations], a=ev["start_ts"] - LOOKBACK, b=ev["end_ts"]),
+            rows=await q("rows", ids=list({x["id"] for x in stations}), a=ev["start_ts"] - LOOKBACK, b=ev["end_ts"]),
             assets=await q("assets", r=r),
             model_runs=await q("model_runs", r=r),
         )
