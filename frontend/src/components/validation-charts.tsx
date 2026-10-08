@@ -1,7 +1,7 @@
 // Charts for the Model validation page, built on the shadcn chart components (components/ui/chart.tsx).
 // Colours: our model blue vs persistence baseline orange (dataviz palette, colour-blind separation validated in
 // light and dark); status colours only for caught / false alarm / missed, always with a legend label.
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from "recharts"
 
 import {
   type ChartConfig,
@@ -21,25 +21,6 @@ const vsConfig = {
   model: { label: "Our model", theme: MODEL },
   persistence: { label: "Persistence baseline", theme: BASE },
 } satisfies ChartConfig
-
-/** Water-level error by lead: model vs persistence. Lower is better. */
-export function ErrorByLeadChart({ data }: { data: { lead: string; model: number; persistence: number }[] }) {
-  return (
-    <ChartContainer config={vsConfig} className={BOX}>
-      <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} />
-        <XAxis dataKey="lead" tickLine={false} axisLine={false} />
-        <YAxis tickLine={false} axisLine={false} width={36} tickFormatter={(v) => v.toFixed(1)} />
-        <ChartTooltip content={<ChartTooltipContent formatter={(v, name) => `${vsConfig[name as keyof typeof vsConfig]?.label}: ${Number(v).toFixed(2)}`} />} />
-        <ChartLegend content={<ChartLegendContent />} />
-        {(["model", "persistence"] as const).map((k) => (
-          <Line key={k} dataKey={k} stroke={`var(--color-${k})`} strokeWidth={2}
-            dot={{ r: 4, fill: `var(--color-${k})`, stroke: "var(--card)", strokeWidth: 2 }} />
-        ))}
-      </LineChart>
-    </ChartContainer>
-  )
-}
 
 /** PR-AUC, model vs persistence, per question. Higher is better. */
 export function SkillChart({ data }: { data: { measure: string; model: number; persistence: number }[] }) {

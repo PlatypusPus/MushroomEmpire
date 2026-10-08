@@ -1,7 +1,8 @@
 // Model validation: held-out metrics exactly as Lane B recorded them in model_runs. Nothing here is recomputed or rounded up.
 import { useMetrics } from "@/api/hooks"
 import { AppShell } from "@/components/app-shell"
-import { CalibrationChart, DetectionChart, ErrorByLeadChart, SimpleBarChart, SkillChart } from "@/components/validation-charts"
+import { ChartLeadInteractive, type LeadRow } from "@/components/chart-lead-interactive"
+import { CalibrationChart, DetectionChart, SimpleBarChart, SkillChart } from "@/components/validation-charts"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -59,9 +60,14 @@ export default function Validation() {
     { measure: "Any event in 24 h", model: m.exceed24h_any?.pr_auc_model, persistence: m.exceed24h_any?.pr_auc_persistence },
     { measure: "New onset", model: m.exceed24h_onset_from_below?.pr_auc_model, persistence: m.exceed24h_onset_from_below?.pr_auc_persistence },
   ]
-  const byLead = [
-    ...Object.entries(m.by_lead ?? {}).map(([h, d]: any) => ({ lead: `${h} h`, model: d.mae_model, persistence: d.mae_persistence })),
-    ...Object.entries(m.horizons ?? {}).map(([h, d]: any) => ({ lead: `${h} h`, model: d.mae_model, persistence: d.mae_persistence })),
+  const byLead: LeadRow[] = [
+    ...Object.entries(m.by_lead ?? {}).map(([h, d]: any) => ({
+      lead: `${h} h`, errModel: d.mae_model, errPersistence: d.mae_persistence,
+      covModel: d.coverage_q10_q90_model, covPersistence: d.coverage_q10_q90_persistence,
+    })),
+    ...Object.entries(m.horizons ?? {}).map(([h, d]: any) => ({
+      lead: `${h} h`, errModel: d.mae_model, errPersistence: d.mae_persistence, covModel: d.coverage_q10_q90,
+    })),
   ]
   const peakBars = [
     { label: "Peak model", value: peak.new_peak_model?.mae_h },
@@ -141,16 +147,14 @@ export default function Validation() {
               </Section>
             </div>
 
-            <Section title="Accuracy by forecast lead" sub="Mean absolute water-level error in stage units, lower is better (units unverified, so read it only as model vs baseline).">
-              <ErrorByLeadChart data={byLead} />
+            <ChartLeadInteractive data={byLead} />
+            <details className="-mt-2 px-1 text-sm">
+              <summary className="cursor-pointer text-xs text-muted-foreground">Show the numbers by lead</summary>
               <Table
                 head={["Lead", "Model error", "Persistence error", "Model q10 to q90 coverage (target 80%)"]}
-                rows={[
-                  ...Object.entries(m.by_lead ?? {}).map(([h, d]: any) => [`${h} h`, num(d.mae_model), num(d.mae_persistence), pct(d.coverage_q10_q90_model)]),
-                  ...Object.entries(m.horizons ?? {}).map(([h, d]: any) => [`${h} h`, num(d.mae_model), num(d.mae_persistence), pct(d.coverage_q10_q90)]),
-                ]}
+                rows={byLead.map((r) => [r.lead, num(r.errModel), num(r.errPersistence), pct(r.covModel)])}
               />
-            </Section>
+            </details>
 
             <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
               <Section title="Timing" sub="Hours off, for events that were caught. Lower is better.">
