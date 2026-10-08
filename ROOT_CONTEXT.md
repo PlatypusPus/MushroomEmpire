@@ -205,6 +205,8 @@ frontend/src/
   api/         typed fetch wrappers + React Query hooks
 ```
 
+Status (2026-10-08): the dashboard is wired to the real API. `src/api/client.ts` (typed fetchers and React Query hooks), `src/state/replayStore.ts` (event, tick, playing, selected zone, weights; replaces the empty `weightsStore.ts`), components `risk-map` (Census place polygons coloured per tick, grey = insufficient data), `time-slider` (play/scrub over replay ticks, 3 h step), `zone-panel` (alert, probability, severity, onset/peak windows, drivers, facilities), `ranking-queue` (weight sliders, top 10), `section-cards` (live counts). One REST call per tick, `GET /api/ranking` with weights, feeds every panel; the WebSocket is not used by the UI yet. Default event 5 (Nicole). Times show the stored gauge clock with "timezone unverified". Template leftovers (sidebar "Acme Inc.", `chart-area-interactive`, `data-table`) are not rendered or still need cleanup; `Honesty.tsx` is empty.
+
 Component-level contract: any value from a source with `is_simulated=true` renders a visible "Simulation" badge. Coverage legend always visible. Uncertainty window always shown next to onset and peak.
 
 ## 11. Data, models and what was found
