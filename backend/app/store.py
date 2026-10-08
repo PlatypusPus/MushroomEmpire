@@ -62,7 +62,7 @@ SQL = {
     "regions": "select id::text as id, name, kind, coverage_label as coverage, false as is_simulated from regions where id = :r",
     "zones": """select id, name, county, geometry, elevation_m, hand_depth_m as hand_m, coverage_class,
                        false as is_simulated from zones where region_id = :r order by id""",
-    "stations": """with thr as (select d.station_id, percentile_cont(0.95) within group (order by d.value) as threshold
+    "stations": """with thr as (select d.station_id, percentile_cont(0.95) within group (order by d.interpolated_value) as threshold
                            from dynamic_features d join stations w on w.id = d.station_id and w.var = 'WATER'
                            where d.ts < :train_end group by d.station_id)
                    select s.id, s.var, zs.zone_id, thr.threshold
