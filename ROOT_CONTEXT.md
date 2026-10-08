@@ -1,4 +1,4 @@
-# CoastGuard AI: Root Context
+# KADAL: Root Context
 
 Single source of truth for any human or coding agent (Claude Code, Codex, Cursor or similar). It merges and replaces `CONTEXT.md`, `TRD.md`, `ARCHITECTURE.md` and `CoastGuard Demo Flow.md`. Read all of it before writing code. Rename to `CLAUDE.md` or `AGENTS.md` if your tool auto-loads one of those.
 
