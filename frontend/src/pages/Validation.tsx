@@ -84,9 +84,9 @@ export default function Validation() {
         <div>
           <h1 className="text-2xl font-semibold">Model validation</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Every number below comes from the held-out years 2020 to 2023 (split S_7), which the model never saw in training
-            (2010 to 2014) or tuning (2015 to 2019). Labels are gauge high-water episodes (3 or more hours above a gauge's usual
-            high-water mark), not observed floods. Stage units are unverified, so we never print water levels.
+            Every number below comes from the years 2020 to 2023 (split S_7). The model never saw those years in training
+            (2010 to 2014) or tuning (2015 to 2019). We count a "flood" when a water gauge stays above its usual high mark for 3 or more
+            hours. That is not the same as confirmed street flooding. The gauge units are unverified, so we never print water levels.
           </p>
           {run && (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -114,7 +114,7 @@ export default function Validation() {
               />
               <p className="mt-2 text-xs text-muted-foreground">
                 Catching a <b>new</b> rise (starting below the mark) is the hard case: about half are caught, and about half of those
-                alerts are false alarms. Ongoing high water is almost always caught.
+                alerts are false alarms. Water that is already high is almost always caught.
               </p>
             </Section>
 
@@ -142,7 +142,7 @@ export default function Validation() {
                 </details>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Expected calibration error {num(v.probability?.ece_calibrated, 3)} after calibration (was {num(v.probability?.ece_raw, 3)}).
-                  High water happened slightly less often in the holdout years than predicted.
+                  High water happened slightly less often in these test years than we predicted.
                 </p>
               </Section>
             </div>
@@ -219,8 +219,8 @@ export default function Validation() {
 
             <Section title="Known limits">
               <ul className="list-disc space-y-1 pl-5 text-sm">
-                <li>Labels are gauge high-water episodes, about 18 per gauge-year, not confirmed street flooding.</li>
-                <li>29 of 109 zones have no usable water gauge and always show as insufficient data, never as low risk.</li>
+                <li>A "flood" here means a gauge above its usual high mark, about 18 times per gauge per year. It is not confirmed street flooding.</li>
+                <li>29 of 109 zones have no usable water gauge and always show as not enough data, never as low risk.</li>
                 <li>No tide or surge input in the shipped forecaster, so coastal surge events can be under-forecast.</li>
                 <li>Gauge timestamps have an unverified timezone; times show the stored gauge clock.</li>
                 <li>Shelters are OSM schools and community centres marked as potential, not an official shelter list.</li>

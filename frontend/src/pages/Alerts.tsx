@@ -19,7 +19,8 @@ export default function Alerts() {
           now={now}
           onPick={(id) => {
             select(id)
-            navigate("/dashboard") // open the zone on the map
+            useReplayStore.getState().setMode("replay") // the alert comes from the replay, so open the replay map
+            navigate("/dashboard") // open the place on the map
           }}
         />
       </div>

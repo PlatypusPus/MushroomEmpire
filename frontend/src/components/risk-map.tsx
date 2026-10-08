@@ -14,11 +14,11 @@ export function RiskMap({ zones, payloads, live = false }: { zones: Zone[]; payl
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{live ? "Live hazard map" : "High-water risk map"}</CardTitle>
+        <CardTitle>{live ? "Live warnings map" : "Flood risk map"}</CardTitle>
         <CardDescription>
           {live
-            ? "Live official layers for South Florida: NWS alert areas and the NHC forecast cone boundary. Not the flood model. Layers toggle top-right."
-            : "Census places coloured by severity at the current replay time. Click a zone for details. Layers and animations toggle top-right."}
+            ? "Live warnings for South Florida from the weather service and the hurricane center: warning areas and the storm's possible path. This is not our flood forecast. Map layers are in the top-right menu."
+            : "Towns and cities coloured by how bad the flood risk is at the time shown. Click one for details. Map layers are in the top-right menu."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -46,20 +46,20 @@ export function RiskMap({ zones, payloads, live = false }: { zones: Zone[]; payl
           {!live && (
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block size-3 rounded-sm" style={{ backgroundColor: UNKNOWN_COLOR }} />
-              insufficient data (unknown, not safe)
+              not enough data (risk unknown, not safe)
             </span>
           )}
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-4 border-t-2 border-dashed border-orange-500" />
-            live NWS alert
+            live weather warning
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-full bg-orange-500 ring-2 ring-white" />
-            live cyclone
+            live storm
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-4 border-t-2 border-dashed border-purple-500" />
-            forecast cone boundary
+            edge of the storm's possible path
           </span>
         </div>
       </CardContent>

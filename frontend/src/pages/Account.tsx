@@ -51,7 +51,7 @@ function SignIn({ error }: { error: string | null }) {
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-muted"><BellIcon className="size-6" /></div>
           <CardTitle className="text-xl">Flood alerts for your neighbourhood</CardTitle>
-          <CardDescription>Sign in or create an account in one step. Follow the places you care about and we email you when they cross the alert threshold or an official warning is issued.</CardDescription>
+          <CardDescription>Sign in or create an account in one step. Follow the places you care about and we email you when they reach the alert level or an official warning is issued.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && <p role="alert" className="rounded border border-destructive/40 bg-destructive/10 p-2 text-center text-sm text-destructive">{ERRORS[error] ?? "Sign-in failed."}</p>}
@@ -196,7 +196,7 @@ function History() {
       </CardHeader>
       <CardContent className="space-y-3">
         {q.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {!q.isLoading && items.length === 0 && <p className="text-sm text-muted-foreground">No alerts yet. When a place you follow crosses the alert threshold, or an official warning covers its county, it shows up here.</p>}
+        {!q.isLoading && items.length === 0 && <p className="text-sm text-muted-foreground">No alerts yet. When a place you follow reaches the alert level, or an official warning covers its county, it shows up here.</p>}
         {items.map((a) => (
           <div key={a.id} className="rounded border p-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">

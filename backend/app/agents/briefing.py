@@ -10,8 +10,8 @@ from app import calibration
 from app.schemas import RiskOutput
 
 NUM = re.compile(r"\d+(?:[.:]\d+)?")
-# ponytail: "Water", not "Flood": labels come from stage-exceedance episodes (ROOT_CONTEXT 12.1)
-NOUN = "Water"
+# the brief's own alert style says "Flood Risk"; the label is a gauge proxy, which the model-validation page states plainly
+NOUN = "Flood"
 
 
 def clock(t: datetime) -> str:
@@ -23,9 +23,9 @@ def render(zone_name: str, risk: RiskOutput, drivers: list[str]) -> str:
     head = f"{risk.severity.capitalize()} {NOUN} Risk, {zone_name}."
     if not risk.onset and risk.probability >= calibration.alert_threshold():
         # likely forecast stays under the mark but the upper band crosses it: an alert with no onset time
-        return f"{head} High-water episode possible in the next {risk.horizon_h} h. Drivers: {' + '.join(drivers)}"
+        return f"{head} Flooding possible in the next {risk.horizon_h} h. Drivers: {' + '.join(drivers)}"
     if not risk.onset:
-        return f"{head} No high-water episode expected in the next {risk.horizon_h} h."
+        return f"{head} No flooding expected in the next {risk.horizon_h} h."
     return f"{head} Onset {clock(risk.onset.likely)}, peak {clock(risk.peak.likely)}. Drivers: {' + '.join(drivers)}"
 
 

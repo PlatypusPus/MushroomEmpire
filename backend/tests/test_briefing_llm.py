@@ -66,3 +66,11 @@ def test_briefing_uses_the_non_thinking_brief_model(monkeypatch):
     from app.config import settings
 
     assert out["source"] == "llm" and seen.get("model") == settings.llm_brief_model
+
+
+def test_guard_allows_flood_risk_but_blocks_claims_that_a_flood_happened():
+    from app.agents.briefing_llm import FORBIDDEN
+    for ok in ("Flood risk is high in Miami.", "A Flood Warning is active.", "Flooding is possible in the next 24 hours."):
+        assert not FORBIDDEN.search(ok), ok
+    for bad in ("Miami is flooded.", "Miami has been flooding all day.", "Miami is safe.", "We guarantee it."):
+        assert FORBIDDEN.search(bad), bad

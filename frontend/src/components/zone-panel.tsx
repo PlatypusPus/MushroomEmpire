@@ -93,8 +93,8 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Zone details</CardTitle>
-          <CardDescription>Click a zone on the map to see its forecast, reasons and facilities.</CardDescription>
+          <CardTitle>Place details</CardTitle>
+          <CardDescription>Click a place on the map to see its forecast, why, and nearby facilities.</CardDescription>
         </CardHeader>
       </Card>
     )
@@ -107,7 +107,7 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
         <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
         <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
         <CardAction className="flex gap-1">
-          <Badge variant="outline" className="capitalize">{zone.coverage.replace("_", " ")}</Badge>
+          <Badge variant="outline" className="capitalize">{zone.coverage === "insufficient_data" ? "not enough data" : zone.coverage.replace("_", " ")}</Badge>
           {zone.is_simulated && <Badge variant="destructive">Simulation</Badge>}
         </CardAction>
       </CardHeader>
@@ -115,9 +115,9 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
         {!unknown && (
           <div className="grid grid-cols-4 gap-3">
             <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />
-            <Stat label="Severity" value={zone.severity ?? "n/a"} color={color} />
-            <Stat label="Onset" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
-            <Stat label="Peak" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
+            <Stat label="How bad" value={zone.severity ?? "n/a"} color={color} />
+            <Stat label="Starts" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
+            <Stat label="Worst at" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
           </div>
         )}
         <Summary zone={zone} tunable={tunable} color={color} />
@@ -139,7 +139,7 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
             ) : zone.drivers_text.length ? (
               <ul className="list-disc pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ul>
             ) : (
-              <p className="text-sm text-muted-foreground">No usable water gauge for this zone, so the risk is unknown.</p>
+              <p className="text-sm text-muted-foreground">There is no working water sensor near this place, so we do not know the risk.</p>
             )}
             {zone.model && <p className="mt-2 text-[11px] text-muted-foreground">Model {zone.model}</p>}
           </TabsContent>

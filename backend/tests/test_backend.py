@@ -77,7 +77,7 @@ def test_ingestion_never_sees_unavailable_rows():
 def test_briefing_rejects_invented_numbers():
     r = derive(traj([0.1, 0.3, 0.2]))
     text = brief("Zone A", r, ["water rising fast"])
-    assert text.startswith("High Water Risk, Zone A. Onset 1:00 PM")
+    assert text.startswith("High Flood Risk, Zone A. Onset 1:00 PM")
     with pytest.raises(ValueError):
         check_numbers(text + " + 85 mm rain", "Zone A", r, ["water rising fast"])
 
@@ -87,7 +87,7 @@ def test_alert_without_onset_says_possible_not_expected():
 
     r = derive(traj([-0.5] * 6)).model_copy(update={"probability": max(calibration.alert_threshold(), 0.5)})
     text = brief("Zone A", r, ["water rising fast"])
-    assert "possible" in text and "No high-water" not in text
+    assert "possible" in text and "No flooding" not in text
 
 
 def test_ranking_moves_with_weights():

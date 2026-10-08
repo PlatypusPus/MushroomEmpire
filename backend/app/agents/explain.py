@@ -9,17 +9,17 @@ from app.schemas import Driver, FeatureVector, Reason
 
 # legacy one-feature phrases: used when no FeatureVector is given (and by tests / the persistence baseline's drivers)
 PHRASES = {
-    "level_m": "high water level now",
+    "level_m": "water level is high now",
     "level_trend": "water rising fast",
     "rain_6h": "recent rain",
     "rain_24h": "recent rain",
     "rain_72h": "several days of rain",
-    "hand_m": "low height above drainage",
+    "hand_m": "low ground next to drainage",
     "elevation_m": "low elevation",
     "level_change_6h": "water rising fast",
     "level_change_24h": "water rising over the day",
-    "level_max_24h": "high water earlier today",
-    "level_max_72h": "high water over recent days",
+    "level_max_24h": "water was high earlier today",
+    "level_max_72h": "water was high in recent days",
     "level_std_24h": "unsettled water levels",
     "tide_m": "high tide",
     "gate": "flood gate operations",
@@ -46,18 +46,18 @@ def _raising(theme: str, fv: FeatureVector | None) -> str | None:
         return None
     if theme == "level":
         if fv.level_m > 0:
-            return "water already above its usual high-water mark"
+            return "water is already above its usual high mark"
         if _pos(fv.level_max_24h):
-            return "water was above its high-water mark earlier today"
+            return "water was above its usual high mark earlier today"
         if _pos(fv.level_max_72h):
-            return "water was above its high-water mark in recent days"
-        return "water close to its usual high-water mark" if fv.level_m >= -CLOSE_UNITS else None  # far below: say nothing rather than something false
+            return "water was above its usual high mark in recent days"
+        return "water is close to its usual high mark" if fv.level_m >= -CLOSE_UNITS else None  # far below: say nothing rather than something false
     if theme == "rise":
         if fv.level_trend_m_per_h > 0 or _pos(fv.level_change_6h):
             return "water rising"
         return "water higher than a day ago" if _pos(fv.level_change_24h) else None
     if theme == "swing":
-        return "water levels swinging a lot"
+        return "water levels going up and down a lot"
     if theme == "terrain":
         low = (fv.elevation_m is not None and fv.elevation_m < ELEV_MEDIAN_M) or (fv.hand_m is not None and fv.hand_m < HAND_MEDIAN_M)
         return "low-lying ground" if low else None
@@ -71,7 +71,7 @@ def _protective(theme: str, fv: FeatureVector | None) -> str | None:
     if fv is None:
         return None
     if theme == "level":
-        return "water well below its usual high-water mark" if fv.level_m < 0 else None
+        return "water is well below its usual high mark" if fv.level_m < 0 else None
     if theme == "rise":
         return "water steady or falling" if fv.level_trend_m_per_h <= 0 and not _pos(fv.level_change_6h) else None
     if theme == "swing":

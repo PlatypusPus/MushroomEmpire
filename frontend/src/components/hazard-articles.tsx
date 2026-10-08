@@ -11,15 +11,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const KIND: Record<HazardArticle["kind"], string> = {
-  alert: "Official alert",
-  advisory: "NHC advisory",
-  summary: "NHC summary",
-  discussion: "NHC discussion",
-  outlook: "NHC outlook",
-  forecast: "Forecast discussion",
-  technical: "NHC technical",
+  alert: "Weather warning",
+  advisory: "Storm update",
+  summary: "Storm summary",
+  discussion: "Forecaster notes",
+  outlook: "7-day outlook",
+  forecast: "Local forecast notes",
+  technical: "Storm data",
 }
-const LEVEL = ["", "Advisory", "Watch", "Warning", "Emergency"]
+const LEVEL = ["", "Heads-up", "Watch", "Warning", "Emergency"]
 
 function ago(iso: string | null): string {
   if (!iso) return ""
@@ -61,20 +61,20 @@ export function HazardArticles() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <NewspaperIcon className="size-4" /> Hazard reading list
+          <NewspaperIcon className="size-4" /> What the experts are saying
         </CardTitle>
         <CardDescription>
-          Full official text from the National Weather Service and the National Hurricane Center, newest guidance for South Florida. Reading material only: it is not part of the storm replay and not a model input.
+          The full official text from the National Weather Service and the National Hurricane Center for South Florida. For reading only: it is separate from the storm replay and is not used by our flood forecast.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {q.isLoading && <p className="text-sm text-muted-foreground">Loading official texts…</p>}
-        {q.error && <p className="text-sm text-muted-foreground">Official text feeds are unavailable (offline?). The storm replay is unaffected.</p>}
-        {q.data?.stale && <p className="text-sm text-destructive">These articles are the last ones we could fetch. The live feeds did not respond just now.</p>}
+        {q.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {q.error && <p className="text-sm text-muted-foreground">We cannot reach the weather services right now (are you offline?). The storm replay still works.</p>}
+        {q.data?.stale && <p className="text-sm text-destructive">These are the last reports we could get. The weather services did not answer just now.</p>}
         {q.data && q.data.partial.length > 0 && !q.data.stale && (
-          <p className="text-xs text-muted-foreground">Some sources did not respond: {q.data.partial.join(", ")}. Showing the rest.</p>
+          <p className="text-xs text-muted-foreground">These did not answer: {q.data.partial.join(", ")}. Showing the rest.</p>
         )}
-        {q.data && list.length === 0 && !q.error && <p className="text-sm text-muted-foreground">No active official products for the region right now.</p>}
+        {q.data && list.length === 0 && !q.error && <p className="text-sm text-muted-foreground">There are no official reports for the area right now.</p>}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((a) => (
             <button
@@ -120,7 +120,7 @@ export function HazardArticles() {
                 )}
                 <pre className="whitespace-pre-wrap break-words rounded-md bg-muted/50 p-3 font-mono text-xs leading-relaxed">{open.body}</pre>
                 <Button render={<a href={open.url} target="_blank" rel="noopener noreferrer" />} variant="outline" size="sm" className="w-fit gap-2">
-                  Open the official source <ExternalLinkIcon className="size-3.5" />
+                  Read it on the official site <ExternalLinkIcon className="size-3.5" />
                 </Button>
               </>
             )}

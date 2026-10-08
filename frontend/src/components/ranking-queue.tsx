@@ -3,12 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useReplayStore } from "@/state/replayStore"
 
 const LABELS: Record<keyof Weights, string> = {
-  probability: "Probability",
-  severity: "Severity",
-  urgency: "Early onset",
-  exposure: "Exposed facilities",
+  probability: "Chance of flooding",
+  severity: "How bad",
+  urgency: "How soon",
+  exposure: "Facilities at risk",
   vulnerable: "Hospitals and shelters",
-  uncertainty: "Timing uncertainty",
+  uncertainty: "Timing doubt",
 }
 const SHOWN = 10
 
@@ -18,7 +18,7 @@ export function RankingQueue({ payloads, names }: { payloads: ZonePayload[]; nam
     <Card>
       <CardHeader>
         <CardTitle>Response priority</CardTitle>
-        <CardDescription>Transparent weighted score. Recommends an order; it does not dispatch anyone.</CardDescription>
+        <CardDescription>A simple score you can adjust. It suggests an order and never sends anyone.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">

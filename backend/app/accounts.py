@@ -270,9 +270,9 @@ def plan_replay(feed: list[dict], subs: dict[str, list[int]], names: dict[str, s
             p = a.get("probability")
             out.append({"user_id": uid, "kind": "replay", "zone_id": a["zone_id"],
                         "key": f"replay:{event_id}:{a['zone_id']}:{a['issue_ts'].isoformat()}",
-                        "title": f"[Simulated replay] {names.get(a['zone_id'], a['zone_id'])}: high-water alert",
-                        "body": f"{a['alert_text']}\n(Replay of {event_name}, model probability {p:.0%}. This is a historical simulation, not a live warning.)"
-                                if p is not None else f"{a['alert_text']}\n(Replay of {event_name}. Historical simulation, not a live warning.)"})
+                        "title": f"[Simulated replay] {names.get(a['zone_id'], a['zone_id'])}: flood alert",
+                        "body": f"{a['alert_text']}\n(Replay of {event_name}, flood chance {p:.0%}. This is a practice replay of a past storm, not a live warning.)"
+                                if p is not None else f"{a['alert_text']}\n(Replay of {event_name}. Practice replay of a past storm, not a live warning.)"})
     return out
 
 
@@ -291,7 +291,7 @@ def plan_live(alerts: dict[str, list[dict]] | None, user_zones: dict[int, list[t
                 out.append({"user_id": uid, "kind": "live", "zone_id": None, "key": f"live:{county}:{al['event']}:{al['effective']}",
                             "title": f"[Official NWS] {al['event']} for {county} County",
                             "body": f"{al['headline'] or al['event']}{until}.\nYour followed places in {county}: {', '.join(sorted(mine))}.\n"
-                                    "This is an official National Weather Service product, separate from the KADAL flood model."})
+                                    "This is an official National Weather Service warning. It is separate from the KADAL flood forecast."})
     return out
 
 

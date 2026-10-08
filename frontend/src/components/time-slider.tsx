@@ -45,13 +45,13 @@ export function TimeSlider({ ticks, events }: { ticks: string[]; events?: CoastE
           >
             {events.map((ev) => (
               <option key={ev.id} value={ev.id}>
-                {ev.name}{ev.is_holdout ? " (held out)" : ""}
+                {ev.name}{ev.is_holdout ? " (test storm)" : ""}
               </option>
             ))}
             {!events.some((ev) => ev.id === eventId) && <option value={eventId}>Event {eventId}</option>}
           </select>
           )}
-          <div className="text-xs text-muted-foreground">replay of held-out data · gauge clock, timezone unverified</div>
+          <div className="text-xs text-muted-foreground">replay of past storm data · times may be off by a few hours</div>
         </div>
       </CardContent>
     </Card>

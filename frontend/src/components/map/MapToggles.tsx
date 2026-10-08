@@ -7,18 +7,18 @@ import { Switch } from "@/components/ui/switch"
 import { useMapToggles, type MapToggleKey } from "@/state/mapLayersStore"
 
 const LAYER_ROWS: { key: MapToggleKey; label: string; desc: string }[] = [
-  { key: "zones", label: "Zone risk fills", desc: "Severity colours at this replay tick" },
-  { key: "alerts", label: "NWS alert polygons", desc: "Live watches and warnings" },
-  { key: "radar", label: "Weather radar", desc: "Animated rain loop, past hour" },
-  { key: "cyclones", label: "Cyclones + cone", desc: "Live NHC storms, track and cone" },
-  { key: "wind", label: "Wind particles", desc: "Animated surface wind flow" },
-  { key: "marineAqi", label: "Marine & air quality", desc: "Wave height and AQI badge" },
+  { key: "zones", label: "Flood risk colours", desc: "Colours show how bad the risk is" },
+  { key: "alerts", label: "Warning areas", desc: "Live weather watches and warnings" },
+  { key: "radar", label: "Rain radar", desc: "Moving rain map, last hour" },
+  { key: "cyclones", label: "Storms", desc: "Live storms and their possible path" },
+  { key: "wind", label: "Wind", desc: "Moving wind flow" },
+  { key: "marineAqi", label: "Sea and air", desc: "Wave height and air quality" },
 ]
 
 const ANIM_ROWS: { key: MapToggleKey; label: string; desc: string }[] = [
-  { key: "pulse", label: "Pulsing alert zones", desc: "Zones on alert breathe" },
-  { key: "spotlight", label: "Top-zone spotlight", desc: "Rank #1 gets a marching outline" },
-  { key: "transitions", label: "Smooth transitions", desc: "Fade severity between ticks" },
+  { key: "pulse", label: "Pulsing alert places", desc: "Places on alert pulse" },
+  { key: "spotlight", label: "Top place outline", desc: "The #1 place gets a moving outline" },
+  { key: "transitions", label: "Smooth colour changes", desc: "Colours fade between steps" },
 ]
 
 /** Single toggle panel for every layer and animation on the map. */

@@ -41,7 +41,7 @@ def al(event="Flood Warning", level=3, ends="2022-11-10T00:00Z"):
 def test_live_plan_matches_county_skips_advisories_and_feed_down_sends_nothing():
     uz = {1: [("a", "Miami", "Miami-Dade")], 2: [("b", "Davie", "Broward")]}
     out = A.plan_live({"Miami-Dade": [al(), al("Coastal Flood Advisory", level=1)], "Broward": []}, uz)
-    assert len(out) == 1 and out[0]["user_id"] == 1 and "Miami" in out[0]["body"] and "separate from the KADAL flood model" in out[0]["body"]
+    assert len(out) == 1 and out[0]["user_id"] == 1 and "Miami" in out[0]["body"] and "separate from the KADAL flood forecast" in out[0]["body"]
     assert A.plan_live(None, uz) == []  # unknown is never an all-clear, and never an alert either
 
 

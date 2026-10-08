@@ -19,14 +19,14 @@ def drv(**c):
 def test_three_level_features_become_one_reason():
     r = explain_detail(drv(level_m=0.9, level_max_24h=0.1, level_max_72h=0.07), fv())
     assert [x.theme for x in r] == ["level"] and r[0].strength == "main reason"
-    assert r[0].phrase == "water already above its usual high-water mark"
+    assert r[0].phrase == "water is already above its usual high mark"
 
 
 def test_level_phrase_follows_the_values():
     below = fv(level_m=-0.2, level_max_24h=0.3)
-    assert explain_detail(drv(level_m=0.5), below)[0].phrase == "water was above its high-water mark earlier today"
+    assert explain_detail(drv(level_m=0.5), below)[0].phrase == "water was above its usual high mark earlier today"
     assert explain_detail(drv(level_m=0.5), fv(level_m=-0.2, level_max_24h=-0.1, level_max_72h=0.2))[0].phrase.endswith("in recent days")
-    assert explain_detail(drv(level_m=0.5), fv(level_m=-0.2, level_max_24h=-0.1, level_max_72h=-0.1))[0].phrase == "water close to its usual high-water mark"
+    assert explain_detail(drv(level_m=0.5), fv(level_m=-0.2, level_max_24h=-0.1, level_max_72h=-0.1))[0].phrase == "water is close to its usual high mark"
     assert explain_detail(drv(level_m=0.5), fv(level_m=-1.2, level_max_24h=-1.1, level_max_72h=-1.0)) == []  # far below the mark: no false "close to"
 
 
@@ -49,14 +49,14 @@ def test_small_themes_are_dropped_and_strength_is_in_words():
 def test_not_at_risk_explains_why_not():
     calm = fv(level_m=-1.0, level_trend_m_per_h=-0.01, level_change_6h=-0.05)
     r = explain_detail(drv(level_m=-0.8, elevation_m=-0.1), calm, at_risk=False)
-    assert r[0].phrase == "water well below its usual high-water mark"
+    assert r[0].phrase == "water is well below its usual high mark"
     assert explain_text(r, at_risk=False).startswith("Main reason for the low risk")
 
 
 def test_no_numbers_anywhere_and_legacy_call_still_works():
     r = explain_detail(drv(level_m=0.5, level_trend=0.2, rain_72h=0.1, hand_m=0.2, elevation_m=0.2, level_std_24h=0.1), fv(rain_72h=3.0), top=6)
     assert not re.search(r"\d", " ".join(x.phrase for x in r) + explain_text(r, True))
-    assert explain(drv(level_m=0.5, elevation_m=0.2)) == ["high water level now", "low elevation"]  # no fv: old behaviour
+    assert explain(drv(level_m=0.5, elevation_m=0.2)) == ["water level is high now", "low elevation"]  # no fv: old behaviour
 
 
 def test_terrain_phrases_are_checked_against_the_ground():

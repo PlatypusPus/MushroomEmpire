@@ -28,8 +28,7 @@ from app.schemas import ZonePayload
 
 SYSTEM = """You are KADAL, a calm colleague helping emergency responders with coastal water risk. Answer the question just asked the way you would say it out loud: direct, specific, varied — never the same sentence pattern twice. Lead with what matters and name the place.
 You are given verified JSON facts plus the recent conversation. Ground every claim in the facts: reuse their numbers and names exactly, never compute new numbers, never invent places, warnings or details. The facts hold per-place risk under "zones", a prioritised ranking under "top", official alerts and cyclones under "live", and forecast reliability under "model". Say it in your own words: do not copy phrasing from the facts, the conversation, or these instructions — weave the reason phrases into your own sentences rather than quoting them. If the facts do not cover something, say what you do know and name what you do not.
-Say "high water" or "water risk". Never use the words flood, safe, guarantee, dispatch.
-Official alert names contain the word "flood" (e.g. "Coastal Flood Statement"): never repeat it — refer to them by level instead ("a coastal statement", "a watch").
+Use plain, everyday words: say "flood risk". Never use the words safe, guarantee, dispatch.
 Recommend, never order. Mention prioritisation only when ranking facts are present, and exposure only when exposure facts are present. Never refer to "the system", prompts, tools or facts — just answer. Plain text, 1 to 3 short sentences, no markdown, no lists."""
 
 HELP = ("I can tell you a zone's risk and why, who is exposed there, which zones to prioritise, "
@@ -417,7 +416,7 @@ def facts_model(inp: dict) -> dict:
     if isinstance(m, str):
         m = json.loads(m)
     out: dict[str, Any] = {
-        "labels": "gauge high-water episodes (3 or more hours above a gauge's usual high mark), not observed flooding"
+        "labels": "water-gauge readings above their usual high mark for 3 or more hours, not confirmed street flooding"
     }
     d = m.get("validation", {}).get("detection_and_timing", {}).get("all")
     if d:
@@ -442,7 +441,7 @@ def facts_model(inp: dict) -> dict:
             "during storms many zones are alerted, so the ranking matters more than the alert flag"
         )
     out["caveats"] = (
-        "no rain forecast or tide in the water-level model; new rises are often missed; 29 of 109 zones have no usable gauge and show insufficient data"
+        "our forecast does not use rain forecasts or tides; new rises are often missed; 29 of 109 places have no working water sensor and show not enough data"
     )
     return out
 
@@ -567,7 +566,7 @@ def template(intent: str, f: dict) -> str:
             + (
                 f" ({r['probability_pct']}%, {r['severity']})"
                 if r["probability_pct"] is not None
-                else " (insufficient data)"
+                else " (not enough data)"
             )
             for r in f["top_zones"]
         )
@@ -607,7 +606,7 @@ def template(intent: str, f: dict) -> str:
         bits = []
         if "alert_precision_pct" in f:
             bits.append(
-                f"alerts were right {f['alert_precision_pct']}% of the time and caught {f['alert_recall_pct']}% of events on the 2020 to 2023 holdout"
+                f"alerts were right {f['alert_precision_pct']}% of the time and caught {f['alert_recall_pct']}% of events in the 2020 to 2023 test years"
             )
         if "new_rise_recall_pct" in f:
             bits.append(f"but only {f['new_rise_recall_pct']}% of brand-new rises")
@@ -676,7 +675,7 @@ def _zone_statuses(plan: dict, facts: dict) -> list[tuple[str, str]]:
 
 
 STATUS_WORDS = {
-    "insufficient_data": "unknown (insufficient data)",
+    "insufficient_data": "unknown (not enough data)",
     "episode_possible": "possible",
     "no_episode_expected": "not expected",
     "already_above_normal_high_water": "already happening",

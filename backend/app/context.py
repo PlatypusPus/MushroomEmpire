@@ -176,27 +176,27 @@ def hazard_level(alerts: dict | None, storms: dict | None) -> dict:
     levels = [v["level"] for v in counties.values()]
     top = None if any(x is None for x in levels) else max(levels)
     return {"level": top, "label": "unknown (alert feed unavailable)" if top is None else LEVELS[top], "counties": counties,
-            "heuristic_note": "Ordering of official products plus a cyclone-distance rule; not a calibrated probability."}
+            "heuristic_note": "A simple rating from official warnings and how close a storm is. It is not a probability."}
 
 
 def agreement(level: int | None, model_probability: float | None, alert_threshold: float) -> dict:
     """How the official level and the flood model relate for one zone. Shown side by side; never merged into one number."""
     if level is None:
-        return {"code": "context_unavailable", "text": "Official alert data is unavailable right now."}
+        return {"code": "context_unavailable", "text": "We cannot get official warnings right now."}
     if model_probability is None:
-        return {"code": "no_model_data", "text": "The model has no data for this zone." + (" An official watch or warning is active." if level >= 2 else "")}
+        return {"code": "no_model_data", "text": "We have no data for this place." + (" An official watch or warning is active." if level >= 2 else "")}
     m = model_probability >= alert_threshold
     if m and level >= 3:
-        return {"code": "agree_warning", "text": "The model and an official warning both indicate high-water risk."}
+        return {"code": "agree_warning", "text": "Our flood forecast and an official warning both show a flood risk."}
     if m and level == 2:
-        return {"code": "model_with_watch", "text": "The model shows risk and an official watch is active."}
+        return {"code": "model_with_watch", "text": "Our forecast shows a risk and there is an official watch."}
     if m:
-        return {"code": "model_only", "text": "Model-only signal: no official watch or warning is active."}
+        return {"code": "model_only", "text": "Only our forecast shows a risk. There is no official watch or warning."}
     if level >= 3:
-        return {"code": "official_only", "text": "An official warning is active but the model does not show risk here. Check manually."}
+        return {"code": "official_only", "text": "There is an official warning here, but our forecast shows no risk. Check it yourself."}
     if level == 2:
-        return {"code": "official_watch_only", "text": "An official watch is active; the model does not show risk here."}
-    return {"code": "none", "text": "Neither the model nor official products show risk."}
+        return {"code": "official_watch_only", "text": "There is an official watch here, but our forecast shows no risk."}
+    return {"code": "none", "text": "Neither our forecast nor the officials show a risk."}
 
 
 # ------------------------------------------------------------------ fetching with cache, staleness and an offline fallback

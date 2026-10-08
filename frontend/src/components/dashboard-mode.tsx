@@ -32,7 +32,7 @@ export function DashboardMode({ events }: { events: CoastEvent[] }) {
               {events.map((ev) => (
                 <option key={ev.id} value={ev.id}>
                   {ev.name}
-                  {ev.is_holdout ? " (held out)" : ""}
+                  {ev.is_holdout ? " (test storm)" : ""}
                 </option>
               ))}
               {!events.some((ev) => ev.id === eventId) && <option value={eventId}>Event {eventId}</option>}
@@ -40,7 +40,7 @@ export function DashboardMode({ events }: { events: CoastEvent[] }) {
           </label>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Live official hazards for South Florida from the National Weather Service and the National Hurricane Center. The flood model forecasts run on past storms: choose Storm replay.
+            Live warnings and storm news for South Florida from the National Weather Service and the National Hurricane Center. Our flood forecasts only run on past storms. Choose Storm replay to see them.
           </p>
         )}
       </CardContent>

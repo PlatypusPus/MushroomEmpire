@@ -20,7 +20,7 @@ export function LiveHazard() {
           <RadioIcon className="size-4" /> Live hazard context
         </CardTitle>
         <CardDescription>
-          Live today from NWS and NHC. Not part of the historical storm replay and not fed into the model.
+          Live today from the weather service and the hurricane center. It is separate from the storm replay and is not used by our flood forecast.
         </CardDescription>
         <CardAction>
           <Badge variant="outline">LIVE</Badge>
@@ -46,28 +46,28 @@ export function LiveHazard() {
                 ))}
               </ul>
             ) : (
-              <div className="text-muted-foreground">No active NWS alerts for Miami-Dade or Broward.</div>
+              <div className="text-muted-foreground">No weather warnings right now for Miami-Dade or Broward.</div>
             )}
             {c.cyclones.map((s) => (
               <div key={s.id}>
                 <span className="font-medium">{s.classification === "HU" ? "Hurricane" : s.classification} {s.name}</span>
                 <span className="text-muted-foreground">
                   {s.distance_km != null && ` · ${s.distance_km.toLocaleString()} km away`}
-                  {s.heading_toward_region && " · heading toward the region"}
+                  {s.heading_toward_region && " · heading toward South Florida"}
                 </span>
               </div>
             ))}
             {c.forecast && (
               <div className="text-xs text-muted-foreground">
-                Weather model (not ours): rain next 24 h {c.forecast.rain_next_24h_mm ?? "n/a"} mm, max gust next 48 h{" "}
+                Weather forecast (not ours): rain in the next 24 h {c.forecast.rain_next_24h_mm ?? "n/a"} mm, strongest gust in the next 48 h{" "}
                 {c.forecast.max_gust_next_48h_kmh ?? "n/a"} km/h.
               </div>
             )}
             {env.data && (env.data.marine || env.data.aqi) && (
               <div className="text-xs text-muted-foreground">
-                Environment (not our model):
+                Sea and air (not our forecast):
                 {env.data.marine && (
-                  <> waves now {env.data.marine.wave_height_now_m ?? "n/a"} m, max {env.data.marine.wave_height_next_24h_max_m ?? "n/a"} m / 24 h</>
+                  <> waves now {env.data.marine.wave_height_now_m ?? "n/a"} m, up to {env.data.marine.wave_height_next_24h_max_m ?? "n/a"} m in 24 h</>
                 )}
                 {env.data.marine && env.data.aqi && " · "}
                 {env.data.aqi && (
@@ -78,7 +78,7 @@ export function LiveHazard() {
             )}
             <div className="text-xs text-muted-foreground">
               Fetched {new Date(c.fetched_at).toLocaleTimeString()}
-              {failed.length > 0 && ` · unavailable: ${failed.join(", ")}`}
+              {failed.length > 0 && ` · not working: ${failed.join(", ")}`}
             </div>
           </>
         )}

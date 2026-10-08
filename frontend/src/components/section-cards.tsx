@@ -9,10 +9,10 @@ export function SectionCards({ payloads, region }: { payloads: ZonePayload[]; re
     .filter((p) => p.is_alert)
     .reduce((n, p) => n + p.exposure.filter((a) => a.type === "hospital" || a.type === "shelter").length, 0)
   const cards = [
-    { label: "Zones on alert", value: alerts, foot: `of ${payloads.length} Census places, validated alert threshold` },
-    { label: "Hospitals and shelters in alerted zones", value: facilities, foot: "potentially exposed, from OSM" },
-    { label: "Zones with insufficient data", value: unknown, foot: "unknown, never shown as low risk" },
-    { label: "Coverage", value: region?.coverage ?? "...", foot: region?.name ?? "" },
+    { label: "Places on alert", value: alerts, foot: `out of ${payloads.length} places` },
+    { label: "Hospitals and shelters in alert places", value: facilities, foot: "could be hit, from OpenStreetMap" },
+    { label: "Places with not enough data", value: unknown, foot: "risk unknown, never shown as low" },
+    { label: "How well tested", value: region?.coverage ?? "...", foot: region?.name ?? "" },
   ]
   return (
     <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">

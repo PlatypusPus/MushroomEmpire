@@ -39,8 +39,8 @@ export function AlertFeed({ feed, names, now, onPick }: {
       <CardHeader>
         <CardTitle>Alert feed</CardTitle>
         <CardDescription>
-          A zone appears when its probability crosses the validated alert threshold, and again only after 24 h off alert.
-          Up to the current replay time{now ? ` (${clock(now, true)})` : ""}, newest first.
+          A place shows up here when its flood chance passes the alert line, and shows up again only after 24 hours below the line.
+          Up to the time shown{now ? ` (${clock(now, true)})` : ""}, newest first.
         </CardDescription>
         <CardAction>
           <Badge variant={firedNow ? "destructive" : "outline"}>{firedNow ? `${firedNow} new` : `${feed.length} fired`}</Badge>

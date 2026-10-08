@@ -53,7 +53,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain label="Monitor" items={monitor} />
         <NavMain label="Analyse" items={analyse} />
         <p className="mt-auto px-4 pb-2 text-xs text-muted-foreground">
-          Recommends only; never dispatches. Live hazards are a separate feed, not a model input.
+          We only suggest, we never send anyone. Live warnings are separate and are not used by our flood forecast.
         </p>
       </SidebarContent>
       <SidebarFooter>

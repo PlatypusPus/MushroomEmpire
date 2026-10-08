@@ -13,10 +13,11 @@ from app.llm.client import LLMUnavailable, chat
 from app.schemas import ZonePayload
 
 SYSTEM = """Write a 2 to 3 sentence briefing for responders about ONE zone, from its JSON. Plain text, under 60 words.
-Rules: use only numbers in the JSON; never state water levels, rain or depths (say high, rising, heavy); say "high water", never flood, safe, guarantee or dispatch; shelters are only potential, name only listed hospitals; recommend, never order.
-By status: insufficient_data writes exactly "Insufficient data, risk unknown."; no_episode_expected says no episode is expected in the next 24 hours; episode_possible says an episode is possible with probability_pct and gives no times; already_above_normal_high_water says water is already high and gives the peak, never an onset."""
+Rules: use only numbers in the JSON; never state water levels, rain or depths (say high, rising, heavy); say "flood risk", never safe, guarantee or dispatch; shelters are only potential, name only listed hospitals; recommend, never order.
+By status: insufficient_data writes exactly "Insufficient data, risk unknown."; no_episode_expected says no flooding is expected in the next 24 hours; episode_possible says flooding is possible with probability_pct and gives no times; already_above_normal_high_water says water is already high and gives the peak, never a start time."""
 
-FORBIDDEN = re.compile(r"\b(flood\w*|safe\w*|guarantee\w*|dispatch\w*)\b", re.IGNORECASE)
+# "flood risk" and "flooding possible" are fine; claiming a flood HAS happened is not (the model predicts risk, it does not observe floods)
+FORBIDDEN = re.compile(r"\b(flooded|safe\w*|guarantee\w*|dispatch\w*)\b|\b(?:is|are|was|were|has|have|been)\s+flooding\b", re.IGNORECASE)
 
 
 async def llm_brief(p: ZonePayload, zone_name: str) -> dict:
