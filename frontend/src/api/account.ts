@@ -1,3 +1,6 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+
 // Accounts client. The session token (our own short-lived JWT, never the Google one) lives in localStorage.
 const KEY = "kadal.token"
 
@@ -28,4 +31,28 @@ export const account = {
   setPrefs: (email_alerts: boolean) => call<{ email_alerts: boolean }>("/me/prefs", { method: "PUT", body: JSON.stringify({ email_alerts }) }),
   alerts: () => call<Delivery[]>("/me/alerts"),
   remove: () => call<void>("/me", { method: "DELETE" }),
+  testEmail: () => call<{ status: "sent" | "outbox" | "failed"; to: string }>("/me/test-email", { method: "POST" }),
+}
+
+/** The signed-in user, or null when signed out. One shared query so the sidebar and the account page never disagree. */
+export function useMe() {
+  return useQuery({
+    queryKey: ["me"],
+    queryFn: async (): Promise<Me | null> => {
+      if (!token.get()) return null
+      try { return await account.me() } catch { return null } // expired or revoked token: treat as signed out (call() already cleared it)
+    },
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
+export function useSignOut() {
+  const qc = useQueryClient()
+  return () => {
+    token.clear()
+    qc.setQueryData(["me"], null) // set, not clear(): clear() detaches live observers, so the page would keep showing the old user
+    qc.removeQueries({ queryKey: ["my-alerts"] })
+    toast("Signed out")
+  }
 }

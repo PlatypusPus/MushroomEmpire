@@ -16,6 +16,7 @@ import hashlib
 import logging
 import secrets
 import smtplib
+import time
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
@@ -237,6 +238,22 @@ async def my_alerts(user: CurrentUser, limit: int = 50) -> list[dict]:
                 for r in rows]
 
 
+_last_test: dict[int, float] = {}
+TEST_COOLDOWN_S = 60
+
+
+@router.post("/me/test-email")
+async def test_email(user: CurrentUser) -> dict:
+    """Send the signed-in user a test message so they can confirm alerts will reach them. One per minute per user."""
+    now = time.monotonic()
+    wait = TEST_COOLDOWN_S - (now - _last_test.get(user.id, -1e9))
+    if wait > 0:
+        raise HTTPException(429, f"wait {int(wait) + 1}s before sending another test")
+    _last_test[user.id] = now
+    status = await send_email(user.email, "KADAL test email", "This is a test email from KADAL. Flood alerts for the places you follow will arrive at this address.")
+    return {"status": status, "to": user.email}
+
+
 @router.delete("/me", status_code=204)
 async def delete_me(user: CurrentUser) -> None:
     async with SessionLocal() as db:
@@ -283,8 +300,10 @@ def _send_smtp(to: str, subject: str, body: str) -> None:
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = settings.smtp_from or settings.smtp_user, to, subject
     msg.set_content(body)
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as s:
-        s.starttls()
+    ssl = settings.smtp_port == 465  # implicit TLS; every other port (587, 25) upgrades with STARTTLS
+    with (smtplib.SMTP_SSL if ssl else smtplib.SMTP)(settings.smtp_host, settings.smtp_port, timeout=20) as s:
+        if not ssl:
+            s.starttls()
         if settings.smtp_user:
             s.login(settings.smtp_user, settings.smtp_password)
         s.send_message(msg)

@@ -147,3 +147,59 @@ def test_config_is_off_until_fully_configured(secret, monkeypatch):
     assert client().get("/api/auth/github/start").status_code == 404
     monkeypatch.setattr(settings, "jwt_secret", "")
     assert client().get("/api/auth/google/start").status_code == 503
+
+
+def test_test_email_goes_to_the_users_own_address_and_is_rate_limited(secret, monkeypatch):
+    user = type("U", (), {"id": 9, "email": "me@example.com"})()
+    sent = []
+
+    async def fake_send(to, subject, body):
+        sent.append(to)
+        return "sent"
+
+    async def fake_user():
+        return user
+    monkeypatch.setattr(A, "send_email", fake_send)
+    app.dependency_overrides[A.current_user] = fake_user
+    A._last_test.clear()
+    try:
+        c = client()
+        first, second = c.post("/api/me/test-email"), c.post("/api/me/test-email")
+    finally:
+        app.dependency_overrides.clear()
+    assert first.json() == {"status": "sent", "to": "me@example.com"} and sent == ["me@example.com"]
+    assert second.status_code == 429  # a second click within a minute does not send again
+
+
+def test_smtp_uses_implicit_tls_on_465_and_starttls_otherwise(monkeypatch):
+    calls = []
+
+    class S:
+        def __init__(self, host, port, timeout):
+            calls.append(type(self).__name__)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+        def starttls(self):
+            calls.append("starttls")
+
+        def login(self, u, p):
+            pass
+
+        def send_message(self, m):
+            calls.append("sent")
+
+    class SSL(S):
+        pass
+    monkeypatch.setattr(A.smtplib, "SMTP", S)
+    monkeypatch.setattr(A.smtplib, "SMTP_SSL", SSL)
+    monkeypatch.setattr(settings, "smtp_host", "h")
+    monkeypatch.setattr(settings, "smtp_port", 587)
+    A._send_smtp("a@b.co", "s", "b")
+    monkeypatch.setattr(settings, "smtp_port", 465)
+    A._send_smtp("a@b.co", "s", "b")
+    assert calls == ["S", "starttls", "sent", "SSL", "sent"]

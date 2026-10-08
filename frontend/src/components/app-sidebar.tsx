@@ -20,10 +20,6 @@ const NAV = [
   { title: "Alerts & account", url: "/account", icon: <BellIcon /> },
 ]
 
-// Demo placeholder: no auth in this build, so the account menu is
-// decorative (Avatar falls back to initials on the empty src).
-const DEMO_USER = { name: "Admin", email: "demo@kadal.local", avatar: "" }
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -41,7 +37,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={NAV} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={DEMO_USER} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )
