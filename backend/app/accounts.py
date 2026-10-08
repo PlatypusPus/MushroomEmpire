@@ -1,9 +1,9 @@
-"""Accounts: OAuth sign-in (Google and/or GitHub), zone subscriptions, alert emails.
+"""Accounts: Google OAuth sign-in, zone subscriptions, alert emails.
 
-* Sign-in and sign-up are one flow: OAuth 2.0 authorization code + PKCE. /auth/<provider>/start redirects to the provider,
-  /auth/<provider>/callback exchanges the code server-side (client secret never reaches the browser), reads a VERIFIED email
-  (Google: signed ID token; GitHub: primary verified address), creates the user on first sign-in, and hands the browser our
-  own short-lived JWT. A provider is on only when its client id and secret are set. No passwords are stored.
+* Sign-in and sign-up are one flow: OAuth 2.0 authorization code + PKCE. /auth/google/start redirects to Google,
+  /auth/google/callback exchanges the code server-side (client secret never reaches the browser), verifies the signed ID token
+  (signature, audience, verified email), creates the user on first sign-in, and hands the browser our own short-lived JWT.
+  Sign-in is on only when the client id and secret are set. No passwords are stored.
 * Alerts, two kinds, always labelled so a replay is never mistaken for a live warning:
     replay: a zone the user follows crossed the validated alert threshold in a (historical, simulated) replay session
     live:   an official NWS/NHC watch or warning is active for the county of a zone the user follows (not from the model)
@@ -43,9 +43,7 @@ MIN_LIVE_LEVEL = 2  # official watch or warning (levels: 1 advisory, 2 watch, 3 
 PROVIDERS = {
     "google": {"label": "Google", "auth": "https://accounts.google.com/o/oauth2/v2/auth", "token": "https://oauth2.googleapis.com/token",
                "scope": "openid email profile", "extra": {"prompt": "select_account"}},
-    "github": {"label": "GitHub", "auth": "https://github.com/login/oauth/authorize", "token": "https://github.com/login/oauth/access_token",
-               "scope": "read:user user:email", "extra": {}},
-}
+}  # ponytail: one provider; the routes already take {provider}, so another is one entry here plus an identity() branch
 
 
 def _creds(provider: str) -> tuple[str, str]:
@@ -160,28 +158,11 @@ async def exchange_code(provider: str, code: str, verifier: str) -> dict:
                          data={"grant_type": "authorization_code", "code": code, "code_verifier": verifier, "redirect_uri": _redirect_uri(provider),
                                "client_id": cid, "client_secret": secret})
     r.raise_for_status()
-    body = r.json()
-    if "error" in body:  # GitHub answers 200 with an error body
-        raise ValueError(body["error"])
-    return body
-
-
-async def github_identity(access_token: str) -> dict:
-    h = {"Authorization": f"Bearer {access_token}", "Accept": "application/vnd.github+json"}
-    async with httpx.AsyncClient(timeout=15, base_url="https://api.github.com", headers=h) as c:
-        u, emails = await c.get("/user"), await c.get("/user/emails")
-    u.raise_for_status()
-    emails.raise_for_status()
-    ok = next((e["email"] for e in emails.json() if e.get("primary") and e.get("verified")), None)
-    if not ok:
-        raise ValueError("no verified primary email")
-    return {"sub": f"github:{u.json()['id']}", "email": ok, "name": u.json().get("name") or u.json().get("login") or ""}
+    return r.json()
 
 
 async def identity(provider: str, code: str, verifier: str) -> dict:
     tok = await exchange_code(provider, code, verifier)
-    if provider == "github":
-        return await github_identity(tok["access_token"])
     info = await asyncio.to_thread(verify_google, tok["id_token"])
     return {"sub": f"google:{info['sub']}", "email": info["email"], "name": info.get("name") or ""}
 

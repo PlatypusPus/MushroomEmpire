@@ -28,7 +28,7 @@ function SignIn({ error }: { error: string | null }) {
       <CardContent className="space-y-3">
         {cfg.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {cfg.isError && <p className="text-sm text-destructive">Could not reach the API.</p>}
-        {cfg.data && !cfg.data.enabled && <p className="text-sm text-muted-foreground">Accounts are not configured on this server (set JWT_SECRET plus a Google or GitHub client id and secret).</p>}
+        {cfg.data && !cfg.data.enabled && <p className="text-sm text-muted-foreground">Accounts are not configured on this server (set JWT_SECRET, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET).</p>}
         {cfg.data?.providers.map((p) => (
           <Button key={p.id} render={<a href={p.login_url} />} size="lg" className="w-full">
             Continue with {p.label}
