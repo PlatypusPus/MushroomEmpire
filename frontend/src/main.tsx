@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
+import Landing from "./pages/Landing";
 import Validation from "./pages/Validation";
 import Alerts from "./pages/Alerts";
 import LiveHazards from "./pages/LiveHazards";
@@ -21,7 +22,8 @@ createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={new QueryClient()}>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={<div className="animate-[page-in_700ms_ease-out]"><Dashboard /></div>} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/validation" element={<Validation />} />
             <Route path="/honesty" element={<Navigate to="/validation" replace />} />

@@ -24,7 +24,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const fresh = feed.filter((a) => a.issue_ts === now).length
 
   const monitor = [
-    { title: "Dashboard", url: "/", icon: <LayoutDashboardIcon /> },
+    { title: "Dashboard", url: "/dashboard", icon: <LayoutDashboardIcon /> },
     {
       title: "Alerts", url: "/alerts", icon: <BellRingIcon />,
       // new alerts at the current replay step, else everything fired so far

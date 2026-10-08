@@ -19,7 +19,7 @@ export default function Alerts() {
           now={now}
           onPick={(id) => {
             select(id)
-            navigate("/") // open the zone on the map
+            navigate("/dashboard") // open the zone on the map
           }}
         />
       </div>
