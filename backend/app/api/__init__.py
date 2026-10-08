@@ -1,13 +1,15 @@
 import asyncio
+import json
 from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app import replay
 from app.config import settings
-from app.llm.client import LLMUnavailable, chat as llm_chat
+from app.llm.client import LLMUnavailable, chat as llm_chat, chat_stream as llm_chat_stream
 from app.schemas import Event, ExposureItem, Metrics, Region, Weights, Zone, ZonePayload
 
 router = APIRouter()
@@ -192,3 +194,24 @@ async def chat(req: ChatRequest) -> ChatResponse:
     except LLMUnavailable as e:
         raise HTTPException(503, str(e))
     return ChatResponse(message=res.text, model=res.model)
+
+
+@router.post("/chat/stream")
+async def chat_stream(req: ChatRequest):
+    """Token stream (SSE) for the same chat. Events: {"token": str},
+    then {"done": true, "model": str}, or {"error": str} when the model
+    cannot answer. <think> spans are stripped server-side, chunk by chunk."""
+    if not req.messages or not any(m.content.strip() for m in req.messages):
+        raise HTTPException(422, "at least one non-empty message is required")
+    messages = [m.model_dump() for m in req.messages]
+
+    async def events():
+        try:
+            async for token in llm_chat_stream(messages, system=req.system):
+                yield f"data: {json.dumps({'token': token})}\n\n"
+        except LLMUnavailable as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            return
+        yield f"data: {json.dumps({'done': True, 'model': settings.llm_model})}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream")
