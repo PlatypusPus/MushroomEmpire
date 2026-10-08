@@ -1,0 +1,22 @@
+[project]
+name = "coastguard-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic-settings",
+  "sqlalchemy[asyncio]",
+  "asyncpg",
+  "alembic",
+  "langchain",
+  "lightgbm",
+  "shap",
+  "geopandas",
+  "shapely",
+  "rasterio",
+]
+# ponytail: tensorflow (CASPIAN) added only if the Phase 7 gate passes
+
+[dependency-groups]
+dev = ["pytest", "httpx", "ruff"]
