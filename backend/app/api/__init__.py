@@ -1,12 +1,13 @@
 import asyncio
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from app import replay
 from app.config import settings
+from app.llm.client import LLMUnavailable, chat as llm_chat
 from app.schemas import Event, ExposureItem, Metrics, Region, Weights, Zone, ZonePayload
 
 router = APIRouter()
@@ -163,3 +164,31 @@ async def metrics(region_id: str, event_id: int | None = None) -> list[Metrics]:
     _, snap = await active(event_id)
     return [Metrics(model=m["model_name"], version=m["version"], region_id=m["region_id"], metrics=m["metrics_json"])
             for m in snap.model_runs if m["region_id"] == region_id]
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    system: str | None = None
+
+
+class ChatResponse(BaseModel):
+    message: str
+    model: str
+
+
+@router.post("/chat")
+async def chat(req: ChatRequest) -> ChatResponse:
+    """Simple chat with the local model. Ungrounded: the model only sees this
+    conversation, never zone data, so its answers are not validated output."""
+    if not req.messages or not any(m.content.strip() for m in req.messages):
+        raise HTTPException(422, "at least one non-empty message is required")
+    try:
+        res = await llm_chat([m.model_dump() for m in req.messages], system=req.system)
+    except LLMUnavailable as e:
+        raise HTTPException(503, str(e))
+    return ChatResponse(message=res.text, model=res.model)

@@ -16,6 +16,8 @@ dependencies = [
   "shapely",
   "rasterio",
   "scikit-learn>=1.9.1",
+  "langgraph>=1.2.14",
+  "litellm>=1.104.2",
 ]
 # ponytail: tensorflow (CASPIAN) added only if the Phase 7 gate passes
 
