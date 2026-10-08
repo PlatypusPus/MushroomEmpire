@@ -31,8 +31,8 @@ export default function Dashboard() {
             Backend error: {String(error)}. Is the API running on port 8000?
           </div>
         )}
-        <div className="grid min-h-[calc(100dvh-var(--header-height)-2rem)] grid-cols-1 items-stretch gap-4 px-4 md:min-h-[calc(100dvh-var(--header-height)-3rem)] lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
-          <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 items-stretch gap-4 px-4 lg:px-6 @5xl/main:h-[calc(100dvh-var(--header-height)-3rem)] @5xl/main:grid-cols-[2fr_1fr] @5xl/main:overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-4">
             <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} live={live} />
           </div>
           {live ? (

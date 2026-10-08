@@ -14,7 +14,7 @@ export function LiveHazard() {
   const failed = c ? Object.entries(c.sources).filter(([, s]) => !s.usable).map(([k]) => k) : []
 
   return (
-    <Card className="h-full border-dashed">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden border-dashed">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <RadioIcon className="size-4" /> Live hazard context
@@ -26,7 +26,7 @@ export function LiveHazard() {
           <Badge variant="outline">LIVE</Badge>
         </CardAction>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3 text-sm">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto text-sm">
         {q.isLoading && <div className="text-muted-foreground">Checking live feeds...</div>}
         {q.error && <div className="text-muted-foreground">Live feeds unavailable (offline?). The storm replay is unaffected.</div>}
         {c && (

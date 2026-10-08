@@ -1020,15 +1020,14 @@ function MapAutoResize() {
 
         // Container resizes (sidebar collapse, container-query breakpoint
         // switches) do not fire a window resize, so observe the container.
-        let pending = false
-        let rafId = 0
+        // Debounced: during a sidebar slide the observer fires every frame,
+        // and invalidating mid-animation reloads tiles and GL canvases each
+        // time (visible flicker). One trailing invalidation after layout
+        // settles is enough.
+        let settleTimer: ReturnType<typeof setTimeout> | undefined
         const ro = new ResizeObserver(() => {
-            if (pending) return
-            pending = true
-            rafId = requestAnimationFrame(() => {
-                pending = false
-                invalidate()
-            })
+            clearTimeout(settleTimer)
+            settleTimer = setTimeout(invalidate, 180)
         })
         ro.observe(map.getContainer())
 
@@ -1038,7 +1037,7 @@ function MapAutoResize() {
         return () => {
             cancelled = true
             cancelAnimationFrame(raf)
-            cancelAnimationFrame(rafId)
+            clearTimeout(settleTimer)
             timers.forEach(clearTimeout)
             ro.disconnect()
             window.removeEventListener("resize", invalidate)

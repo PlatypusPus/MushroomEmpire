@@ -113,13 +113,13 @@ function Facilities({ items }: { items: ExposureItem[] }) {
 export function ZonePanel({ zone, name, tunable = false, payloads, region }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean; payloads?: ZonePayload[]; region?: Region }) {
   if (!zone) {
     return (
-      <Card className="h-full">
-        <CardHeader>
+      <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+        <CardHeader className="shrink-0">
           <CardTitle>Place details</CardTitle>
           <CardDescription>Click a place on the map to see its forecast, why, and nearby facilities.</CardDescription>
         </CardHeader>
         {payloads && (
-          <CardContent>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto">
             <OverviewStrip payloads={payloads} region={region} />
           </CardContent>
         )}
@@ -129,8 +129,8 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region }: { z
   const unknown = zone.coverage === "insufficient_data"
   const color = zone.severity ? SEVERITY_COLOR[zone.severity] : UNKNOWN_COLOR
   return (
-    <Card className="h-full">
-      <CardHeader>
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+      <CardHeader className="shrink-0">
         <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
         <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
         <CardAction className="flex gap-1">
@@ -138,7 +138,7 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region }: { z
           {zone.is_simulated && <Badge variant="destructive">Simulation</Badge>}
         </CardAction>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
         {payloads && <OverviewStrip payloads={payloads} region={region} />}
         {!unknown && (
           <div className="grid grid-cols-4 gap-3">

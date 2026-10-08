@@ -15,7 +15,7 @@ import { useReplayStore } from "@/state/replayStore"
 export function DashboardMode({ events }: { events: CoastEvent[] }) {
   const { mode, setMode, eventId, setEvent } = useReplayStore()
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
       <NavigationMenu aria-label="Dashboard mode">
         <NavigationMenuList>
           <NavigationMenuItem>

@@ -55,7 +55,7 @@ export function TimeSlider({ ticks, events, bare = false }: { ticks: string[]; e
     </>
   )
   if (bare) {
-    return <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center">{body}</div>
+    return <div className="flex shrink-0 flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center">{body}</div>
   }
   return (
     <Card>
