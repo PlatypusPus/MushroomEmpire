@@ -2,12 +2,13 @@
 // and NOT an input to the flood model (ROOT_CONTEXT section 3: live feeds stay visibly separate).
 import { RadioIcon } from "lucide-react"
 
-import { useLiveContext } from "@/api/hooks"
+import { useEnvLayers, useLiveContext } from "@/api/hooks"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function LiveHazard() {
   const q = useLiveContext()
+  const env = useEnvLayers()
   const c = q.data
   const alerts = c ? Object.entries(c.alerts).flatMap(([county, list]) => list.map((a) => ({ county, ...a }))) : []
   const failed = c ? Object.entries(c.sources).filter(([, s]) => !s.usable).map(([k]) => k) : []
@@ -60,6 +61,19 @@ export function LiveHazard() {
               <div className="text-xs text-muted-foreground">
                 Weather model (not ours): rain next 24 h {c.forecast.rain_next_24h_mm ?? "n/a"} mm, max gust next 48 h{" "}
                 {c.forecast.max_gust_next_48h_kmh ?? "n/a"} km/h.
+              </div>
+            )}
+            {env.data && (env.data.marine || env.data.aqi) && (
+              <div className="text-xs text-muted-foreground">
+                Environment (not our model):
+                {env.data.marine && (
+                  <> waves now {env.data.marine.wave_height_now_m ?? "n/a"} m, max {env.data.marine.wave_height_next_24h_max_m ?? "n/a"} m / 24 h</>
+                )}
+                {env.data.marine && env.data.aqi && " · "}
+                {env.data.aqi && (
+                  <> AQI {env.data.aqi.us_aqi_now ?? "n/a"} (PM2.5 {env.data.aqi.pm2_5_now ?? "n/a"} µg/m³)</>
+                )}
+                .
               </div>
             )}
             <div className="text-xs text-muted-foreground">

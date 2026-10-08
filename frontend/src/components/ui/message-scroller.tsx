@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 
 interface ScrollerContext {
-  viewportRef: React.RefObject<HTMLDivElement>
+  viewportRef: React.RefObject<HTMLDivElement | null>
   isAtEnd: boolean
   setAtEnd: (v: boolean) => void
   scrollToEnd: (behavior?: ScrollBehavior) => void

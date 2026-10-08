@@ -267,6 +267,14 @@ async def live_context(refresh: bool = False) -> dict:
     return await context.get_context(force=refresh)
 
 
+@router.get("/env")
+async def env_layers(refresh: bool = False) -> dict:
+    """Live environmental map overlays: NWS alert polygons, cyclone cones/tracks, radar frames, marine/AQI, wind grid. Overlay-only, never model input."""
+    from app import env_layers
+
+    return await env_layers.get_env(force=refresh)
+
+
 @router.get("/zones/{zone_id}/context")
 async def zone_context(zone_id: str, model_probability: float | None = None, event_id: int | None = None) -> dict:
     """County-level slice of the live context for a zone. Pass `model_probability` (from a LIVE forecast) to get the agreement flag;
