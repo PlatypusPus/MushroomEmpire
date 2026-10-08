@@ -1,5 +1,6 @@
 """Risk derivation agent: probability, severity, onset and peak from ONE trajectory. No ML."""
 
+from app import calibration
 from app.schemas import DepthTrajectory, RiskOutput, Severity, TimeWindow
 
 # ponytail: uncalibrated placeholders; lane B replaces with values fitted on the validation split (S_6)
@@ -49,11 +50,14 @@ def derive(traj: DepthTrajectory) -> RiskOutput:
         near = [st.t for st, x in zip(s, q) if x[2] >= peak_level]
         peak = TimeWindow(earliest=near[0], likely=s[peak_i].t, latest=near[-1])
 
+    cal = traj.model.startswith("lightgbm-quantile") and calibration.load() is not None
+    if cal:  # isotonic map and severity cuts fitted on the S_6 validation split
+        prob = calibration.probability(prob)
     return RiskOutput(
         zone_id=traj.zone_id,
         issue_ts=traj.issue_ts,
         probability=round(prob, 2),
-        severity=severity_of(peak_level, prob),
+        severity=calibration.severity(prob, peak_level) if cal else severity_of(peak_level, prob),
         onset=onset,
         peak=peak,
         peak_level_m=round(peak_level, 2),

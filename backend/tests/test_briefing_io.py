@@ -7,7 +7,8 @@ from app.agents.briefing_io import briefing_input, grounded
 from app.schemas import ZonePayload
 
 S = json.loads((Path(__file__).resolve().parents[1] / "samples" / "zone_payloads_nicole.json").read_text())
-top, quiet, unknown = (S[k] for k in ("example_top_zone", "example_no_episode_zone", "example_insufficient_data_zone"))
+top = S["example_top_zone"]
+by = S["by_status"]
 
 
 def inp(example):
@@ -15,10 +16,10 @@ def inp(example):
 
 
 def test_status_is_explicit():
-    assert inp(top)["status"] == "already_above_normal_high_water"  # level was above its mark at issue time
-    assert inp(quiet)["status"] == "no_episode_expected"
-    u = inp(unknown)
-    assert u["status"] == "insufficient_data" and u["probability_pct"] is None  # unknown is never shown as low
+    for status, example in by.items():  # every sample must map to the status it was filed under
+        assert inp(example)["status"] == status
+    assert {"insufficient_data", "no_episode_expected"} <= set(by)
+    assert inp(by["insufficient_data"])["probability_pct"] is None  # unknown is never shown as low
 
 
 def test_nothing_the_llm_must_not_print_is_passed():

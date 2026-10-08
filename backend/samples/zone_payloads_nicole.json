@@ -1,6 +1,7 @@
 {
  "issue_ts": "2022-11-09T12:00:00+00:00",
  "event": "2022 Nov Hurricane Nicole",
+ "alert_threshold": 0.26999999999999996,
  "counts": {
   "zones": 109,
   "forecast": 80
@@ -10,7 +11,7 @@
   "feature_vector": {
    "zone_id": "1245000",
    "issue_ts": "2022-11-09T12:00:00Z",
-   "level_m": 1.0251912500000004,
+   "level_m": 0.9594736111111114,
    "level_trend_m_per_h": 0.08985185185185178,
    "rain_6h": 0.02064880952380935,
    "rain_24h": 0.1854714285714275,
@@ -18,27 +19,27 @@
    "hand_m": 1.134,
    "elevation_m": 3.907,
    "is_simulated": false,
-   "level_change_6h": 1.5637999999999999,
+   "level_change_6h": 1.5638,
    "level_change_24h": 0.6708527777777776,
-   "level_max_24h": 1.1474968055555563,
-   "level_max_72h": 1.1474968055555563,
+   "level_max_24h": 1.0817791666666672,
+   "level_max_72h": 1.0817791666666672,
    "level_std_24h": 0.6084722063675411
   },
   "trajectory_first_and_last_steps": [
    {
     "t": "2022-11-09T13:00:00Z",
     "depth_m": {
-     "q10": -0.2676825021873357,
+     "q10": -0.28095421142207777,
      "q50": 0.16866237829741723,
-     "q90": 1.2510377040856717
+     "q90": 1.2643094133204138
     }
    },
    {
     "t": "2022-11-10T12:00:00Z",
     "depth_m": {
-     "q10": -0.1622682562244826,
+     "q10": -0.1850939841828905,
      "q50": 0.38980467613015346,
-     "q90": 0.90499536937601
+     "q90": 0.9278210973344179
     }
    }
   ],
@@ -68,8 +69,8 @@
   "risk": {
    "zone_id": "1245000",
    "issue_ts": "2022-11-09T12:00:00Z",
-   "probability": 0.78,
-   "severity": "high",
+   "probability": 0.91,
+   "severity": "severe",
    "onset": {
     "earliest": "2022-11-09T13:00:00Z",
     "likely": "2022-11-09T13:00:00Z",
@@ -88,8 +89,8 @@
    "issue_ts": "2022-11-09T12:00:00Z",
    "coverage": "experimental",
    "is_simulated": false,
-   "probability": 0.78,
-   "severity": "high",
+   "probability": 0.91,
+   "severity": "severe",
    "onset": {
     "earliest": "2022-11-09T13:00:00Z",
     "likely": "2022-11-09T13:00:00Z",
@@ -1599,267 +1600,2547 @@
    ],
    "rank": 1,
    "rank_reason": "High probability, early onset",
-   "alert_text": "High Water Risk, Miami. Onset 1:00 PM, peak 12:00 AM. Drivers: high water level now + high water earlier today + high water over recent days",
+   "alert_text": "Severe Water Risk, Miami. Onset 1:00 PM, peak 12:00 AM. Drivers: high water level now + high water earlier today + high water over recent days",
    "model": "lightgbm-quantile-v2"
   }
  },
- "example_no_episode_zone": {
-  "zone_name": "Westchester",
-  "zone_payload": {
-   "zone_id": "1276075",
-   "issue_ts": "2022-11-09T12:00:00Z",
-   "coverage": "experimental",
-   "is_simulated": false,
-   "probability": 0.43,
-   "severity": "low",
-   "onset": null,
-   "peak": null,
-   "drivers_text": [
-    "high water level now",
-    "high water over recent days",
-    "high water earlier today"
-   ],
-   "exposure": [
-    {
-     "type": "shelter",
-     "name": "Emerson School",
-     "status": "potentially_exposed"
+ "by_status": {
+  "already_above_normal_high_water": {
+   "zone_name": "Miami",
+   "zone_payload": {
+    "zone_id": "1245000",
+    "issue_ts": "2022-11-09T12:00:00Z",
+    "coverage": "experimental",
+    "is_simulated": false,
+    "probability": 0.91,
+    "severity": "severe",
+    "onset": {
+     "earliest": "2022-11-09T13:00:00Z",
+     "likely": "2022-11-09T13:00:00Z",
+     "latest": "2022-11-10T12:00:00Z"
     },
-    {
-     "type": "shelter",
-     "name": "Saint Brendan School",
-     "status": "potentially_exposed"
+    "peak": {
+     "earliest": "2022-11-09T13:00:00Z",
+     "likely": "2022-11-10T00:00:00Z",
+     "latest": "2022-11-10T12:00:00Z"
     },
-    {
-     "type": "shelter",
-     "name": "Saint John Vianney College Seminary",
-     "status": "potentially_exposed"
+    "drivers_text": [
+     "high water level now",
+     "high water earlier today",
+     "high water over recent days"
+    ],
+    "exposure": [
+     {
+      "type": "shelter",
+      "name": "Carver High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Citrus Grove School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Coconut Grove School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Comstock School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Corpus Christi School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Dade School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Dunbar School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Flagler School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Greater Miami Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Gulliver School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Holy Redeemer School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kensington Park School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Immaculata - La Salle High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Orchard Villa School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Holmes School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Marys School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Michaels School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Stephens School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saints Peter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Santa Clara School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Shadowlawn Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Silver Bluff School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Coral Way School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Southside School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Wheatley School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Holmes School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Crowder School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Yahweh Education Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Champagnat Catholic School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Aerospace Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pan American Institute",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Jose Marti School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kinloch Park Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Martin Luther King Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Educational Alternative Program",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Citrus Grove Occupational Training Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North COPE Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Frances S Tucker Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Coral Way Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "hospital",
+      "name": "Douglas Gardens Hospital",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Martin Technical College",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Florida Career College",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Interamerican Christian School - Second Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Happy Nest Learning Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Griffins Day Care Nursery School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Centervilla School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "ABC Day Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North Shores Child Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Northside Christian Day Care",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Shores School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Val-Don Day Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Young Years Day Care",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Turners Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Tots Town University Child Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Thomas Tots Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sparks Kindergarten and Day Care",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Small Fry Educational Day Care - Third Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint James Day Care",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Temple Beth Am Day School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Suniland Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Thomas Episcopal Parish School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lingles School and Educational Clinic",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Gulliver Preparatory School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Childrens House",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Cantwell Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Hugh School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Lazarus Nursery/Kindergarten School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kiddie Ranch Nursery and Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Easter Seal Demonstration School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Champagnat Catholic School of Miami",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Brickell Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Corpus Christi School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Elizabeth E Curtis Child Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Eaton Day Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Holy Cross Day Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Arrowhead Nursery and Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kiddieland Child Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Christ-Mar School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kinderland Preparatory School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Our Lady of Fatima Nursery School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Palm Springs Presbyterian Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Paradise Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "West Hialeah Baptist Church Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Boulevard School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Coral Gate Park Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami-Dade Community College Preschool Laboratory",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Williams Private School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "West Flagler Day Care",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Wee Lads and Lassies Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sunny Day School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Shores Academy for the Gifted",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Faiths Episcopal School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Francis Xavier School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pratts Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Mueller Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Johnsons Toddlers University",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Jacksons Toddle Inn",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hope Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hope Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Mary Immaculate Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Learning School Number Two",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "La Luz School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Debbie School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Continental Military Institute",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "YWCA Child Care Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Learning Experience School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Its A Small World Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "DaVinci Institute",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Childrens Development Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Freedom Christian Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Coral Park Day School/Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Concord Christian Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Hugh Church and School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Private School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ransom Everglades Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Vanguard School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Shepherd School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Merritt Junior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Vann Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Vann Academy II",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Victory Homes Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "West End Park Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Unification Academy for Learning West",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Tri Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Trinity International University",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Tamiami United Methodist Church Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Southside Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sunflowers Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "School of Choice",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Small People Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Rosa Parks Community School-Overton",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Mary's Cathedral School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Matthew's Lutheran School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Michael the Archangel School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Stephen's Episcopal School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saints Peter and Paul School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Plymouth Preschool of Plymouth Congregational Church",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Orchard Villa Headstart",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Our Lady of Fatima Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "New World School of the Arts",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "New World School of the Arts",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Nance School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Dade Community College Mitchel Wolfson Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Jackson Adult School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Lakes Educational Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Northwestern Adult School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Little Shaver Number 1 Jose Marti School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Mater Academy East Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Maya Angelou Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln Marti Schools",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln Marti Schools",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln Marti Schools",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 10th Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 11th Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 1st Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 3rd Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 5th Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 8th Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Linda Ray Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Little Havana 2nd Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Jose Marti School 1st Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Jose Marti School 2nd Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Jose Marti School 3rd Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kensington Primary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "ICA Learning Center of America",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Grapeland Park Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Greater Bethel Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Gibson Charter School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "English Center Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center A",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center B",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center C",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center D",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center J",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center K",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center L",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center M",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center N",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center O",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Downtown Miami Charter School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Easter Seal Society School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ebenezer Christian Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Dade Marine Institute",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Culmer Place Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Coconout Grove Elementary Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Centervilla Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Brickell Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Brito Miami Private School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Bryan Cares Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Belafonte Tacolcy Ceenter Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Aspira Eugenio Maria De Hostos School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Aurora Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Academy of Arts and Minds School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Aleida's Nursery School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Alpha Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Applied Technology School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "MIUAD",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Fire College",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 4",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Department Support Service Division",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 6",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 7",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 8",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 9",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Seaport / Port of Miami Fire Department Station 39",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 11",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 12",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 2",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire and Rescue Training Center",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Omni Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Overtown Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Upper Eastside Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Bayside Police Mini Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Alapattah Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami East Havana Network Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Downtown Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami North Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Flagami Network Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Edgewater Police Mini Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Southwest Coconut Grove Network Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department - Little Haiti NET",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department - Canine Unit",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department West Flagler NET",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department Little Havana NET",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department - NET",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami - Dade County Police - Court Liaison",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami - Dade County Police Department",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami - Dade County Police Department",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department - Internal Affairs",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department - Administration",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami - Dade School Police Department",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami - Dade County Police Department",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department - Investigations",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "OHLA",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Fire Rescue City of Miami",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pangaea Exploration",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire-Rescue Station 5",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ellen Y. Moceri Community Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Citrus Grove Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Cubaocho museum e performing arts center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "police",
+      "name": "Marine Police",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Reunion",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Rio Towers",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kinloch Park Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Edison Park Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Little River Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Edison Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "iTech - Miami's Mega Technology Magnet High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Morningside Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Phyllis Ruth Miller Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Thena Crowler Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Toussaint L'ouverture Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Georgia Jones-Ayers Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lenora B Smith Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Department Support Service Division",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Archbishop Curley-Notre Dame High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Eneida Masses Hartner Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 1",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Little Haiti Cultural Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "The Cushman School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Jose de Diego Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Young Men's Preparatory Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Eugenio Maria De Hostos Wynwood Neighborhood Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ransom Everglades Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "police",
+      "name": "Miami South Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Dade College Koubek Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 10",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "Select Specialty Hospital - Miami",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami Police Department - Bomb Squad",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Florida Highway Patrol Troop E Investigations",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Downtown Miami Charter School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "police",
+      "name": "Miami - Dade County Police Department",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Miami Fire / Rescue Station 3",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Riverside School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ransom Everglades School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "hospital",
+      "name": "UHealth Tower",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "Jackson Behavioral Health Hospital",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "Miami Veterans Affairs Medical Center",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "Jackson Memorial Hospital",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "Mercy Hospital",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Shenandoah Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Shenandoah Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Frederick Douglas Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Booker T Washington Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Fairlawn Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Auburndale Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Northwestern Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Jackson Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "police",
+      "name": "Miami-Dade Grapeland Heights Substation",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Frances S. Tucker Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     }
+    ],
+    "rank": 1,
+    "rank_reason": "High probability, early onset",
+    "alert_text": "Severe Water Risk, Miami. Onset 1:00 PM, peak 12:00 AM. Drivers: high water level now + high water earlier today + high water over recent days",
+    "model": "lightgbm-quantile-v2"
+   }
+  },
+  "episode_expected": {
+   "zone_name": "Pompano Beach",
+   "zone_payload": {
+    "zone_id": "1258050",
+    "issue_ts": "2022-11-09T12:00:00Z",
+    "coverage": "experimental",
+    "is_simulated": false,
+    "probability": 0.89,
+    "severity": "severe",
+    "onset": {
+     "earliest": "2022-11-09T13:00:00Z",
+     "likely": "2022-11-09T19:00:00Z",
+     "latest": "2022-11-10T12:00:00Z"
     },
-    {
-     "type": "shelter",
-     "name": "Loyola College",
-     "status": "potentially_exposed"
+    "peak": {
+     "earliest": "2022-11-09T13:00:00Z",
+     "likely": "2022-11-10T12:00:00Z",
+     "latest": "2022-11-10T12:00:00Z"
     },
-    {
-     "type": "shelter",
-     "name": "Lincoln Center High School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Seven Dwarfs Nursery School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Little Bird Kindergarten and Day Care",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Francisco Baldor School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Christopher Columbus High School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Briarcliffe College",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Saint Agatha School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "The Learning Tree Day Care Preschool",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Saint Thomas Academy",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Saint Thomas University South Dade Center",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Olympia Heights United Methodist Kindergarten and Day Care Center",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Montessori Childrens Academy",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Miami Coral Park Adult School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Little Village Academy",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "First Infant University",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Coral Park Day School and Kindergarten",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Arrowhead Kindergarten",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "fire_station",
-     "name": "Westchester Fire Department Station 47",
-     "status": "confirmed"
-    },
-    {
-     "type": "fire_station",
-     "name": "Tropical Park Fire Department Station 3",
-     "status": "confirmed"
-    },
-    {
-     "type": "police",
-     "name": "FIU Police Department",
-     "status": "confirmed"
-    },
-    {
-     "type": "shelter",
-     "name": "shelter",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Carlos Finlay Elementary School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Banyan Elementary School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Olympia Heights Elementary School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "shelter",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Coral Park Elementary School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Everglades K-8 Center",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Miami Coral Park Senior High School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Emerson Elementary School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Rockway Elementary School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "Rockway Middle School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "shelter",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "shelter",
-     "name": "shelter",
-     "status": "potentially_exposed"
-    }
-   ],
-   "rank": 37,
-   "rank_reason": "High probability, hospital or shelter in zone",
-   "alert_text": "Low Water Risk, Westchester. No high-water episode expected in the next 24 h.",
-   "model": "lightgbm-quantile-v2"
-  }
- },
- "example_insufficient_data_zone": {
-  "zone_name": "Aventura",
-  "zone_payload": {
-   "zone_id": "1202681",
-   "issue_ts": "2022-11-09T12:00:00Z",
-   "coverage": "insufficient_data",
-   "is_simulated": false,
-   "probability": null,
-   "severity": null,
-   "onset": null,
-   "peak": null,
-   "drivers_text": [],
-   "exposure": [
-    {
-     "type": "shelter",
-     "name": "Aventura Charter Elementary School",
-     "status": "potentially_exposed"
-    },
-    {
-     "type": "fire_station",
-     "name": "Aventura South Fire Department Station 33",
-     "status": "confirmed"
-    },
-    {
-     "type": "fire_station",
-     "name": "Aventura Fire Department Station 8",
-     "status": "confirmed"
-    },
-    {
-     "type": "police",
-     "name": "Aventura Police Station",
-     "status": "confirmed"
-    },
-    {
-     "type": "hospital",
-     "name": "HCA Florida Aventura Hospital",
-     "status": "confirmed"
-    },
-    {
-     "type": "shelter",
-     "name": "Don Soffer Aventura High School",
-     "status": "potentially_exposed"
-    }
-   ],
-   "rank": 81,
-   "rank_reason": "Insufficient or stale data, check manually",
-   "alert_text": "Insufficient data, Aventura. Risk unknown.",
-   "model": null
+    "drivers_text": [
+     "high water level now",
+     "high water earlier today",
+     "high water over recent days"
+    ],
+    "exposure": [
+     {
+      "type": "shelter",
+      "name": "Coleman School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Project School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Elizabeths School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pompano Beach Institute of International Studies",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North Point School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North Pompano Baptist Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "First Christian Church Day School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hope Lutheran",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Florida Ocean Sciences Institute",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kiddle Kollege",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Childrens Workshop",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "First Baptist Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Americana Preparatory School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Memorial Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North Area Education Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Dave Thomas Education Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Cypress Run Alternative Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Broward Children's Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Broward Children's Center North",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Pompano Beach Fire Prevention",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Pompano Beach Police Department - Community Services",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Broward County Sheriff's Office",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pro Am Dance Studio",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Studio Spade",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sanders Park Elementary",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ely Blanche High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Cresthaven Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Crystal Lake Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Cypress Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Palmview Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pompano Beach Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Robert C Markham Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "McNab Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "fire_station",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Norcrest Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Pompano Beach Fire and Rescue Station 24",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pompano Beach Cultural Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Mc Nair Community Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Thomas D Stephanis Club - Boys & Girls Club of America",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Charles Drew Family Resource Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pompano Beach High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pompano Beach High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Coleman Catholic School",
+      "status": "potentially_exposed"
+     }
+    ],
+    "rank": 29,
+    "rank_reason": "High probability, severe expected level",
+    "alert_text": "Severe Water Risk, Pompano Beach. Onset 7:00 PM, peak 12:00 PM. Drivers: high water level now + high water earlier today + high water over recent days",
+    "model": "lightgbm-quantile-v2"
+   }
+  },
+  "episode_possible": {
+   "zone_name": "The Hammocks",
+   "zone_payload": {
+    "zone_id": "1271569",
+    "issue_ts": "2022-11-09T12:00:00Z",
+    "coverage": "experimental",
+    "is_simulated": false,
+    "probability": 0.33,
+    "severity": "moderate",
+    "onset": null,
+    "peak": null,
+    "drivers_text": [
+     "high water level now",
+     "high water over recent days",
+     "high water earlier today"
+    ],
+    "exposure": [
+     {
+      "type": "shelter",
+      "name": "Boystown of Florida",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Temple Samu-el or Okom School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ward Stone College",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "The Early Education Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kings Meadow Day School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Gilbert L Porter Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Doctor Gilbert L Porter Primary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Archbishop Carroll High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hammocks Fire Department Station 36",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Miami - Dade County Police Department Hammocks Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "KLA Schools",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Felix Varela High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Claude Pepper Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Oliver Hoover Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Christina M Eve Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "hospital",
+      "name": "West Kendall Baptist Hospital",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kendall Square K-8 Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "shelter",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hammocks Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Archbishop Coleman Carroll",
+      "status": "potentially_exposed"
+     }
+    ],
+    "rank": 35,
+    "rank_reason": "High probability, severe expected level",
+    "alert_text": "Moderate Water Risk, The Hammocks. No high-water episode expected in the next 24 h.",
+    "model": "lightgbm-quantile-v2"
+   }
+  },
+  "no_episode_expected": {
+   "zone_name": "Hialeah",
+   "zone_payload": {
+    "zone_id": "1230000",
+    "issue_ts": "2022-11-09T12:00:00Z",
+    "coverage": "experimental",
+    "is_simulated": false,
+    "probability": 0.2,
+    "severity": "low",
+    "onset": null,
+    "peak": null,
+    "drivers_text": [
+     "high water level now",
+     "high water over recent days",
+     "high water earlier today"
+    ],
+    "exposure": [
+     {
+      "type": "shelter",
+      "name": "Immaculate Conception School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Johnson School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Home/Hospital Instructional Program",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Faith Lutheran School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Edison Private School - Second Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Edison Private School - First Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Cinderella School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Champagnat Catholic School of Hialeah",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Boulevard Private School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "La Divina Providencia Episcopal Church School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "First Baptist Schools",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sunrise Presbyterian Church Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Apple Tree Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Good Shepherd Lutheran Preschool Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Palmetto Christian Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hialeah Gardens Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Cinderella Day Nursery",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Tiny Tots Day Nursery and Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sunset Heights Baptist School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Luke Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Carrousel Day Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Asbury School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Edison School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Technical College",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Du Puis School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North Twin Lakes School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Youth Crusade Child Care",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sharon Christian Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Roblanca Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Nuestra Senora de Lourdes Nursery School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Horeb Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Montessori Childrens House of Miami Lakes",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Happy House School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Palm Day School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "West Hialeah Baptist Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Three Flags Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "The Glory of God Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "South Day Care and Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Snow White and the Seven Dwarfs School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Shalom Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Sheppard Primary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Silvia's School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Saint Thomas University Villanuva Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Roblanca Academy",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Pooh and Friends Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Rainbow Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Paradise Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Nuestra Senora De Lourdes Nursery School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Our Lady of Charity Private School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North Hialeah Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 12th Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Lincoln-Marti School 4th Campus",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Kids Day Care and Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "La Scala Day Care Center I",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Horeb Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hialeah Senior High Adult Education Center",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hialeah-Miami Lakes Adult School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Florida National College",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Friendship House Cooperative Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Fairytales Preschool",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Faith Lutheran School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Dupuis Elementary Head Start",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Edison Private Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "District Instructional Center 2",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Children's Christian School House",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Christ-Mar Kindergarten",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Christ-Mar Private School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Asbury Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Andy's Nursery School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "A World for Children Montessori School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hialeah Fire Department Station 1",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hialeah Fire Department Station 3",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hialeah Fire Department Station 4",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hialeah Fire Department Station 2",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hialeah Fire Department Station 7",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hialeah Fire Department Station 5",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Hialeah Fire Department Station 6",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Hialeah Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Hialeah Police Substation",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Hialeah Police Substation",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Hialeah Police Department - Property and Evidence",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "American Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "hospital",
+      "name": "Southern Winds",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ben Sheppard Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Ernest R Graham Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Jose Marti Middle High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Miami Douglas Macarthur North",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hialeah Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "South Hialeah Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "\u200bSaint John the Apostle Catholic School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Flamingo Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hialeah Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "North Hialeah Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Amelia Earhart Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hialeah Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Palm Springs Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "John G. DuPuis Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Palm Springs Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Twin Lakes Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Bethel Baptist Christian School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Bright Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Henry H. Filer Middle School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Mae M. Walters Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Meadowlane Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Milam Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Westland Hialeah Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Hialeah-Miami Lakes Senior High School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "shelter",
+      "name": "Palm Lakes Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "hospital",
+      "name": "Palmetto General Hospital",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "Larkin Community Hospital Palm Springs Campus",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "Hialeah Hospital",
+      "status": "confirmed"
+     }
+    ],
+    "rank": 39,
+    "rank_reason": "Hospital or shelter in zone, high probability",
+    "alert_text": "Low Water Risk, Hialeah. No high-water episode expected in the next 24 h.",
+    "model": "lightgbm-quantile-v2"
+   }
+  },
+  "insufficient_data": {
+   "zone_name": "Aventura",
+   "zone_payload": {
+    "zone_id": "1202681",
+    "issue_ts": "2022-11-09T12:00:00Z",
+    "coverage": "insufficient_data",
+    "is_simulated": false,
+    "probability": null,
+    "severity": null,
+    "onset": null,
+    "peak": null,
+    "drivers_text": [],
+    "exposure": [
+     {
+      "type": "shelter",
+      "name": "Aventura Charter Elementary School",
+      "status": "potentially_exposed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Aventura South Fire Department Station 33",
+      "status": "confirmed"
+     },
+     {
+      "type": "fire_station",
+      "name": "Aventura Fire Department Station 8",
+      "status": "confirmed"
+     },
+     {
+      "type": "police",
+      "name": "Aventura Police Station",
+      "status": "confirmed"
+     },
+     {
+      "type": "hospital",
+      "name": "HCA Florida Aventura Hospital",
+      "status": "confirmed"
+     },
+     {
+      "type": "shelter",
+      "name": "Don Soffer Aventura High School",
+      "status": "potentially_exposed"
+     }
+    ],
+    "rank": 81,
+    "rank_reason": "Insufficient or stale data, check manually",
+    "alert_text": "Insufficient data, Aventura. Risk unknown.",
+    "model": null
+   }
   }
  }
 }

@@ -41,7 +41,7 @@ Convert it with `briefing_input(payload, zone_name)`; give the LLM only that dic
 
 | Field | Meaning | Notes for the writer |
 |---|---|---|
-| `status` | `insufficient_data` / `no_episode_expected` / `already_above_normal_high_water` / `episode_expected` | Decides the wording (section 4). `already_above...` means the gauge is already past its usual high-water mark, so "onset" is not a future event |
+| `status` | `insufficient_data` / `episode_possible` / `no_episode_expected` / `already_above_normal_high_water` / `episode_expected` | Decides the wording (section 4). `already_above...` means the gauge is already past its usual high-water mark, so "onset" is not a future event. `episode_possible` = no median crossing but probability is at or above the validated alert threshold (0.27): say "a high-water episode is possible", give no onset time |
 | `probability_pct` | 0 to 100, from the quantile trajectory | `null` only for `insufficient_data` |
 | `severity` | low, moderate, high, severe | Placeholder thresholds, not calibrated (see section 6) |
 | `onset`, `peak` | earliest, likely, latest clock times | `latest` can fall on the next day; show the three together as a window |
@@ -80,6 +80,7 @@ of their allowed numbers.
 3. Say "high water" or "water risk", not "flood": labels are stage-exceedance episodes, not observed flooding.
 4. `insufficient_data`: write "Insufficient data, risk unknown." Never say low or safe. Never guess.
 5. `no_episode_expected`: say no high-water episode is expected in the next 24 h. Do not promise safety.
+5b. `episode_possible`: say an episode is possible with the probability; do not give an onset or peak time (there is none).
 6. `already_above_normal_high_water`: do not write "onset at 1:00 PM". Say water is already high and give the peak window.
 7. Shelters are only potential. Name hospitals, count the rest.
 8. If `is_simulated`, say "Simulation" first. Always keep the experimental caveat when `coverage` is `experimental`.
@@ -102,9 +103,9 @@ percentage that differs from `probability_pct`. Tests: `tests/test_briefing_io.p
 
 ## 6. What the writer should not over-claim (current model facts)
 
-- Forecast quality on the 2020 to 2023 holdout (v2): exceedance within 24 h PR-AUC 0.69 against a 0.12 base rate; onset from below the mark PR-AUC 0.50 against a 0.09 base rate. Good, not certain. Metrics: `GET /api/models/{region_id}/metrics`.
+- Forecast quality on the 2020 to 2023 holdout (v2, calibrated on 2015 to 2019): event within 24 h (3 or more hours above the gauge mark) PR-AUC 0.67 against a 0.10 base rate; at the alert threshold 0.27, precision 0.58 and recall 0.68 overall, but only precision 0.46 and recall 0.53 when a gauge starts below its mark (2,383 missed events, 3,154 false alarms in 67,345 gauge-days). Good, not certain. Probabilities are calibrated (ECE 0.013), so "78%" can be read as about 78 in 100 similar situations, with S_7 slightly less frequent than predicted. Timing: for events caught, the likely onset is off by a median 0 h (mean absolute 2.6 h, 90% within 10 h); the likely peak is off by a mean absolute 6.8 h (90% within 15 h), so treat the peak time as rough. The stated time windows are about 23 h wide and almost always contain the truth, which makes them weak; say "later today" rather than a precise hour for the peak. Metrics: `GET /api/models/{region_id}/metrics`.
 - Labels are gauge high-water episodes, about 18 per gauge-year. Reported real floods (SFBench observations) match them about twice as often as chance.
 - 29 of 109 zones have no usable water gauge and must show as insufficient data.
-- Severity cut-offs (0.15 and 0.45 stage units) are uncalibrated placeholders.
+- Severity is now fitted on the validation years but weak: exact class match is high only because most cases are "low"; for real events moderate is right 20% of the time, high 28%, severe 40% (recall 20%, 36%, 57%), though 97% of cases are within one class. Prefer wording like "higher than usual" over a hard severity word.
 - No tide or surge input in the shipped model, so coastal events can be under-forecast.
 - Ranking counts OSM schools as "potential shelters", which inflates the vulnerable term for large cities (Miami has 242). Treat `rank_reason` as a heuristic until a real shelter list replaces it.

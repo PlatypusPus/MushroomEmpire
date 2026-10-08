@@ -11,6 +11,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from app import calibration
 from app.schemas import DepthQuantiles, DepthStep, DepthTrajectory, Driver, FeatureVector
 
 FEATURES = ["level", "trend", "rain_6h", "rain_24h", "rain_72h", "hand_m", "elevation_m", "change_6h", "change_24h", "max_24h", "max_72h", "std_24h"]
@@ -45,6 +46,8 @@ class Forecaster:
         by_q = self.predict_leads(X)
         ks = np.arange(1, horizon_h + 1)
         q = {p: np.interp(ks, LEADS, by_q[p][0]) for p in QUANTILES}
+        w = calibration.widen(ks, LEADS)  # conformal widening fitted on S_6
+        q[0.1], q[0.9] = q[0.1] - w, q[0.9] + w
         steps = [DepthStep(t=fv.issue_ts + timedelta(hours=int(k)),
                            depth_m=DepthQuantiles(q10=float(q[0.1][i]), q50=float(q[0.5][i]), q90=float(q[0.9][i])))
                  for i, k in enumerate(ks)]

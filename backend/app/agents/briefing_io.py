@@ -9,11 +9,12 @@ import re
 from collections import Counter
 from datetime import timedelta
 
+from app import calibration
 from app.schemas import ZonePayload
 
 HORIZON_H = 24
 NUM = re.compile(r"\d+(?:[.:]\d+)?")
-STATUS = ("insufficient_data", "no_episode_expected", "already_above_normal_high_water", "episode_expected")
+STATUS = ("insufficient_data", "episode_possible", "no_episode_expected", "already_above_normal_high_water", "episode_expected")
 
 
 def clock(t) -> str:
@@ -27,6 +28,8 @@ def _window(w):
 def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
     if p.probability is None:
         status = "insufficient_data"
+    elif p.onset is None and p.probability >= calibration.alert_threshold():
+        status = "episode_possible"  # median stays under the mark but the upper band crosses it: validated alert rule
     elif p.onset is None:
         status = "no_episode_expected"
     elif p.onset.likely - p.issue_ts <= timedelta(hours=1):  # the first forecast step is already above the mark
