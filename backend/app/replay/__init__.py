@@ -3,8 +3,8 @@
 Ticks are computed by the same chain the live path uses and memoised, so scrubbing re-reads
 instead of recomputing (ROOT_CONTEXT 15.2)."""
 
+import re
 import threading
-import uuid
 from datetime import datetime, timedelta
 from functools import lru_cache
 
@@ -54,30 +54,50 @@ def alert_feed(session_id: str, upto: int) -> list[dict]:
     sess = sessions[session_id]
     # computed once per session and only extended: scrubbing back just filters, never recomputes
     st = sess.setdefault("alerts", {"done": -1, "feed": [], "last_on": {}})  # last_on: zone -> last tick on alert
-    with _feed_lock:  # requests run in worker threads; extend the feed one at a time
-        _extend(sess, st, upto)
-    now = sess["ticks"][min(upto, len(sess["ticks"]) - 1)]
+    upto = min(upto, len(sess["ticks"]) - 1)
+    while st["done"] < upto:
+        i = st["done"] + 1
+        zones = tick(sess["event_id"], sess["ticks"][i])  # the slow model work, outside the lock (memoised)
+        with _feed_lock:  # held only to append, so a request never starves behind the warm-up thread
+            if st["done"] == i - 1:
+                _append(sess, st, i, zones)
+    now = sess["ticks"][upto]
     return [a for a in st["feed"] if a["issue_ts"] <= now][::-1]
 
 
-def _extend(sess: dict, st: dict, upto: int) -> None:
-    for i in range(st["done"] + 1, min(upto, len(sess["ticks"]) - 1) + 1):
-        ts = sess["ticks"][i]
-        for z in tick(sess["event_id"], ts):
-            if not z.is_alert:
-                continue
-            # zones hover near the threshold; re-fire only after a full quiet period, not on every flicker
-            if z.zone_id not in st["last_on"] or ts - st["last_on"][z.zone_id] > REFIRE_AFTER:
-                st["feed"].append({"issue_ts": ts, "zone_id": z.zone_id, "alert_text": z.alert_text,
-                                   "probability": z.probability, "severity": z.severity, "is_simulated": z.is_simulated})
-            st["last_on"][z.zone_id] = ts
-        st["done"] = i
+def _append(sess: dict, st: dict, i: int, zones: tuple[ZonePayload, ...]) -> None:
+    ts = sess["ticks"][i]
+    for z in zones:
+        if not z.is_alert:
+            continue
+        # zones hover near the threshold; re-fire only after a full quiet period, not on every flicker
+        if z.zone_id not in st["last_on"] or ts - st["last_on"][z.zone_id] > REFIRE_AFTER:
+            st["feed"].append({"issue_ts": ts, "zone_id": z.zone_id, "alert_text": z.alert_text,
+                               "probability": z.probability, "severity": z.severity, "is_simulated": z.is_simulated})
+        st["last_on"][z.zone_id] = ts
+    st["done"] = i
 
 
 async def start(event_id: int, step_h: int) -> dict:
-    snap = await snapshot(event_id)
-    sid = uuid.uuid4().hex[:12]
-    sessions[sid] = {"event_id": event_id, "ticks": ticks(snap, step_h)}
-    # warm every tick (and the alert feed) in the background so playback never waits on the model
-    threading.Thread(target=alert_feed, args=(sid, len(sessions[sid]["ticks"]) - 1), daemon=True).start()
+    """Session id is derived from (event, step), so a browser tab survives a backend restart and repeat starts share one warm-up."""
+    sid = f"e{event_id}-s{step_h}"
+    if sid not in sessions:
+        snap = await snapshot(event_id)
+        sessions[sid] = {"event_id": event_id, "ticks": ticks(snap, step_h)}
+        # warm every tick (and the alert feed) in the background so playback never waits on the model
+        threading.Thread(target=alert_feed, args=(sid, len(sessions[sid]["ticks"]) - 1), daemon=True).start()
     return {"session_id": sid, "event_id": event_id, "ticks": sessions[sid]["ticks"]}
+
+
+async def ensure(session_id: str) -> bool:
+    """Recreate a session from its id after a restart (ids look like e5-s3). False if the id is not ours."""
+    if session_id in sessions:
+        return True
+    m = re.fullmatch(r"e(\d+)-s(\d+)", session_id)
+    if not m:
+        return False
+    try:
+        await start(int(m[1]), int(m[2]))
+    except KeyError:  # unknown event
+        return False
+    return True

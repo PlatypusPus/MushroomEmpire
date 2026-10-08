@@ -23,6 +23,13 @@ export default function Dashboard() {
   const payloads = useTick(eventId, ticks[tick], weights)
   const alerts = useAlertFeed(replay.data?.session_id, tick)
 
+  // Esc clears the selected zone
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && useReplayStore.getState().select(null)
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
   const names = React.useMemo(() => new Map((zones.data ?? []).map((z) => [z.id, z.name])), [zones.data])
   const event = events.data?.find((e) => e.id === eventId)
   const rows = payloads.data ?? []

@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -87,18 +88,18 @@ async def replay_start(event_id: int, step_h: Annotated[int, Query(ge=1, le=24)]
 
 
 @router.get("/replay/{session_id}/alerts")
-def replay_alerts(session_id: str, upto: Annotated[int, Query(ge=0)] = 0) -> list[dict]:
+async def replay_alerts(session_id: str, upto: Annotated[int, Query(ge=0)] = 0) -> list[dict]:
     """Alert feed: each zone appears on the tick it first crosses the alert threshold (again after it clears)."""
-    if session_id not in replay.sessions:
+    if not await replay.ensure(session_id):
         raise HTTPException(404, f"unknown session {session_id}")
-    return replay.alert_feed(session_id, upto)
+    return await run_in_threadpool(replay.alert_feed, session_id, upto)  # model work stays off the event loop
 
 
 @ws_router.websocket("/ws/replay/{session_id}")
 async def replay_ws(ws: WebSocket, session_id: str, interval_s: float = 1.0, start: int = 0):
     """Pushes {issue_ts, zones:[ZonePayload]} per tick, in order."""
     await ws.accept()
-    sess = replay.sessions.get(session_id)
+    sess = replay.sessions.get(session_id) if await replay.ensure(session_id) else None
     if sess is None:
         await ws.close(code=4404, reason="unknown session")
         return

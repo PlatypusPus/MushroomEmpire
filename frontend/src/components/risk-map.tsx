@@ -1,5 +1,5 @@
 import * as React from "react"
-import maplibregl, { type Map as MLMap, type MapLayerMouseEvent } from "maplibre-gl"
+import maplibregl, { type Map as MLMap, type MapMouseEvent } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { useTheme } from "next-themes"
 
@@ -63,9 +63,10 @@ export function RiskMap({ zones, payloads }: { zones: Zone[]; payloads: ZonePayl
     mapRef.current = map
     map.addControl(new maplibregl.NavigationControl(), "top-right")
     map.on("load", addLayers)
-    map.on("click", "zones-fill", (e: MapLayerMouseEvent) => {
-      const id = e.features?.[0]?.properties?.zone_id as string | undefined
-      if (id) select(id)
+    // one handler for the whole map: a zone selects it, anywhere else (sea, outside the region) deselects
+    map.on("click", (e: MapMouseEvent) => {
+      const hit = map.getLayer("zones-fill") ? map.queryRenderedFeatures(e.point, { layers: ["zones-fill"] }) : []
+      select((hit[0]?.properties?.zone_id as string | undefined) ?? null)
     })
     map.on("mouseenter", "zones-fill", () => (map.getCanvas().style.cursor = "pointer"))
     map.on("mouseleave", "zones-fill", () => (map.getCanvas().style.cursor = ""))
