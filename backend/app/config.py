@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     llm_chat_timeout_s: float = Field(default=60, gt=0)  # per-question budget for the grounded assistant
     llm_chat_max_tokens: int = Field(default=220, gt=0)  # answers are capped at 4 short sentences
     llm_brief_max_tokens: int = Field(default=120, gt=0)  # briefings are 2 to 3 sentences, under 60 words
+    llm_brief_model: str = "ollama/qwen2.5:3b"  # constrained paraphrase: non-thinking model (qwen3 thinks in a
+    # separate field and burns small token budgets on reasoning, leaving empty content)
 
 
 settings = Settings()

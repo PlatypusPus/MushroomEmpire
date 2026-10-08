@@ -1,5 +1,8 @@
 """Graph parity + chat endpoint. LLM calls are faked: no daemon, no network."""
 
+import asyncio
+from types import SimpleNamespace
+
 import litellm
 import pytest
 from fastapi.testclient import TestClient
@@ -75,6 +78,34 @@ def test_think_stripper_drops_unclosed_span():
     s = ThinkStripper()
     assert s.feed("Answer <think>never closed") == "Answer "
     assert s.flush() == ""
+
+
+def _acompletion_with(content):
+    async def fake(**kwargs):
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+    return fake
+
+
+@pytest.mark.parametrize("content,want", [
+    ("<think>reasoning here</think>High water likely in Miami.", "High water likely in Miami."),
+    ("Answer first <think>reasoning</think> then more.", "Answer first  then more."),
+    ("No thinking at all.", "No thinking at all."),
+])
+def test_chat_strips_thinking_but_keeps_answer(monkeypatch, content, want):
+    monkeypatch.setattr(litellm, "acompletion", _acompletion_with(content))
+    res = asyncio.run(real_chat([{"role": "user", "content": "hi"}]))
+    assert res.text == want
+
+
+@pytest.mark.parametrize("content", [
+    "<think>only thinking, no answer</think>",  # think-only: nothing visible survives
+    "<think>never closed",  # unclosed span is dropped, never leaked
+    "",  # genuinely empty
+])
+def test_chat_think_only_is_unavailable_not_leaked(monkeypatch, content):
+    monkeypatch.setattr(litellm, "acompletion", _acompletion_with(content))
+    with pytest.raises(LLMUnavailable):
+        asyncio.run(real_chat([{"role": "user", "content": "hi"}]))
 
 
 def test_chat_stream_endpoint(monkeypatch):

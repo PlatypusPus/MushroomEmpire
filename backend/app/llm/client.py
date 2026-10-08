@@ -6,7 +6,6 @@ flood numbers: the LLM narrates text given to it, and numeric grounding
 (check_numbers in briefing) stays mandatory wherever numbers appear.
 """
 
-import re
 from dataclasses import dataclass
 
 import litellm
@@ -22,7 +21,6 @@ SYSTEM = (
     "Mark anything simulated as simulated."
 )
 
-_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _THINK_OPEN = "<think"
 _THINK_CLOSE = "</think>"
 
@@ -97,28 +95,34 @@ def _content_to_text(content: object) -> str:
 async def chat(
     messages: list[dict[str, str]], *, system: str | None = None,
     max_tokens: int | None = None, timeout_s: float | None = None,
+    model: str | None = None, temperature: float | None = None,
 ) -> ChatResult:
     """One chat turn. Raises LLMUnavailable when the model cannot answer."""
+    name = model or settings.llm_model
     convo = [{"role": "system", "content": system or SYSTEM}, *messages]
     try:
         resp = await litellm.acompletion(
-            model=settings.llm_model,
+            model=name,
             messages=convo,
             api_base=settings.ollama_base_url or None,
             api_key=settings.llm_api_key or None,
-            temperature=settings.llm_temperature,
+            temperature=temperature if temperature is not None else settings.llm_temperature,
             timeout=timeout_s or settings.llm_timeout_s,
             max_tokens=max_tokens,
         )
     except Exception as exc:  # timeout, connection refused, unknown model
         raise LLMUnavailable(
-            f"model {settings.llm_model!r} did not answer "
+            f"model {name!r} did not answer "
             f"(is `ollama serve` running at {settings.ollama_base_url}?): {exc}"
         ) from exc
-    text = _THINK.sub("", _content_to_text(resp.choices[0].message.content)).strip()
+    raw = _content_to_text(resp.choices[0].message.content)
+    # Same stripping as the streaming path: thinking spans (even unclosed ones)
+    # are dropped, never leaked; only the visible answer survives.
+    stripper = ThinkStripper()
+    text = (stripper.feed(raw) + stripper.flush()).strip()
     if not text:
-        raise LLMUnavailable(f"model {settings.llm_model!r} returned an empty reply")
-    return ChatResult(text=text, model=settings.llm_model)
+        raise LLMUnavailable(f"model {name!r} returned an empty reply")
+    return ChatResult(text=text, model=name)
 
 
 async def chat_stream(messages: list[dict[str, str]], *, system: str | None = None):

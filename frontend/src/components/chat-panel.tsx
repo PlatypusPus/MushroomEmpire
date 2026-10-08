@@ -6,15 +6,9 @@ import type { AssistantResult, ChatMessage } from "@/api/client"
 import { streamAssistant } from "@/api/client"
 import { useReplay } from "@/api/hooks"
 import { useReplayStore } from "@/state/replayStore"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardAction,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -29,15 +23,24 @@ import { cn } from "cn"
 const GREETING: ChatMessage = {
   role: "assistant",
   content:
-    "Grounded in live zone data. Name a place each time, e.g. “What is the status at Fort Lauderdale?” or “Why is Fort Lauderdale at risk?”",
+    "Hi! KADAL here, Ask away!",
 }
 
 const EXAMPLES = [
   "What is the status at Fort Lauderdale?",
   "Why is Fort Lauderdale at risk?",
+  "Which zones should we prioritise first?",
 ]
 
-export function ChatPanel() {
+const TOOL_LABELS: Record<string, string> = {
+  zone_detail: "zone",
+  exposure: "exposure",
+  top_zones: "ranking",
+  model_metrics: "reliability",
+  live: "live alerts",
+}
+
+export function ChatPanel({ className }: { className?: string }) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([GREETING])
   const [metas, setMetas] = React.useState<(AssistantResult | undefined)[]>([undefined])
   const [input, setInput] = React.useState("")
@@ -66,9 +69,12 @@ export function ChatPanel() {
     const controller = new AbortController()
     abortRef.current = controller
     try {
-      // Name the place in the question; share the dashboard's current
-      // event/tick/weights so the answer reuses the computed tick cache
-      // and matches the ranking on screen.
+      // Send the recent conversation (not just this question) so follow-ups
+      // like "check again" resolve. The greeting (index 0) is excluded: its
+      // example phrasings would otherwise leak into the model's answers.
+      // Share the dashboard's current event/tick/weights so the answer
+      // reuses the computed tick cache and matches the ranking on screen.
+      const history = next.slice(1).filter((m) => m.content !== "").slice(-8)
       const res = await streamAssistant(content, (token) => {
         setMessages((m) => {
           const copy = [...m]
@@ -78,7 +84,7 @@ export function ChatPanel() {
           }
           return copy
         })
-      }, { signal: controller.signal, event_id: eventId, issue_ts: issueTs, weights, onStatus: setStatus })
+      }, { signal: controller.signal, event_id: eventId, issue_ts: issueTs, weights, messages: history, onStatus: setStatus })
       setMetas((m) => {
         const copy = [...m]
         copy[copy.length - 1] = res
@@ -110,19 +116,9 @@ export function ChatPanel() {
     streaming && messages[messages.length - 1]?.content === ""
 
   return (
-    <Card className="flex h-[70dvh] flex-col">
-      <CardHeader>
-        <CardTitle>Assistant</CardTitle>
-        <CardDescription>
-          Grounded in zone rank, severity and drivers{model ? ` · ${model}` : ""}
-          {source ? ` · ${source === "llm" ? "AI, number-checked" : "template"}` : ""}.
-        </CardDescription>
-        <CardAction>
-          <Badge variant="outline">Grounded · zone data</Badge>
-        </CardAction>
-      </CardHeader>
+    <div className={cn("flex min-h-0 flex-col", className ?? "h-[70dvh]")}>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
-        <MessageScroller className="min-h-0 flex-1 rounded-lg border bg-muted/30">
+        <MessageScroller className="min-h-0 flex-1 rounded-lg bg-muted/30">
           <MessageScrollerViewport className="p-4">
             <MessageScrollerContent>
               {messages
@@ -146,6 +142,9 @@ export function ChatPanel() {
                         <div className="mr-auto mt-1 text-[11px] text-muted-foreground">
                           {meta.source === "llm" ? "AI · number-checked" : "template"}
                           {meta.intent ? ` · ${meta.intent}` : ""}
+                          {meta.tools?.length
+                            ? ` · checked: ${meta.tools.map((t) => TOOL_LABELS[t] ?? t).join(" + ")}`
+                            : ""}
                         </div>
                       )}
                     </MessageScrollerItem>
@@ -163,7 +162,7 @@ export function ChatPanel() {
           <MessageScrollerButton />
         </MessageScroller>
         {messages.length <= 1 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
             {EXAMPLES.map((q) => (
               <button
                 key={q}
@@ -176,11 +175,11 @@ export function ChatPanel() {
             ))}
           </div>
         )}
-        <form onSubmit={send} className="flex gap-2">
+        <form onSubmit={send} className="flex shrink-0 gap-3 p-7">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Name a place: status at …? Why is … at risk?"
+            placeholder="Ask about a place, or follow up…"
             disabled={streaming}
           />
           <Button type="submit" disabled={!input.trim() || streaming}>
@@ -189,6 +188,6 @@ export function ChatPanel() {
           </Button>
         </form>
       </CardContent>
-    </Card>
+    </div>
   )
 }

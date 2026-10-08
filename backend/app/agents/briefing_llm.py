@@ -28,7 +28,8 @@ async def llm_brief(p: ZonePayload, zone_name: str) -> dict:
     prompt = briefing_prompt(p, zone_name)  # status-conditioned minimal prompt, not the full facts
     try:
         res = await chat([{"role": "user", "content": json.dumps(prompt)}], system=SYSTEM,
-                         max_tokens=settings.llm_brief_max_tokens, timeout_s=settings.llm_chat_timeout_s)
+                         max_tokens=settings.llm_brief_max_tokens, timeout_s=settings.llm_chat_timeout_s,
+                         model=settings.llm_brief_model)
         text = grounded_prompt(res.text.strip(), prompt)  # ValueError on any invented number
         if FORBIDDEN.search(text):
             raise ValueError(f"forbidden word in {text!r}")
