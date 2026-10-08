@@ -1,4 +1,4 @@
-import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type TimeWindow, type ZonePayload } from "@/api/client"
+import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type Region, type TimeWindow, type ZonePayload } from "@/api/client"
 import { useZoneBriefing } from "@/api/hooks"
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +50,28 @@ function windowSub(w: TimeWindow | null) {
   return `${clock(w.earliest, day(w.earliest))} to ${clock(w.latest, day(w.latest))}`
 }
 
+/** Global replay stats, rendered as a 4-column strip on top of the Place details card. */
+function OverviewStrip({ payloads, region }: { payloads: ZonePayload[]; region: Region | undefined }) {
+  const count = (f: (p: ZonePayload) => boolean) => payloads.filter(f).length
+  const alerts = count((p) => p.is_alert)
+  const unknown = count((p) => p.coverage === "insufficient_data")
+  const facilities = payloads
+    .filter((p) => p.is_alert)
+    .reduce((n, p) => n + p.exposure.filter((a) => a.type === "hospital" || a.type === "shelter").length, 0)
+  const items = [
+    { label: "Places on alert", value: `${alerts}/${payloads.length}` },
+    { label: "Hospitals and shelters", value: String(facilities) },
+    { label: "insufficient data", value: String(unknown) },
+  ]
+  return (
+    <div className="grid grid-cols-4 gap-3 border-b pb-3">
+      {items.map((c) => (
+        <Stat key={c.label} label={c.label} value={c.value} />
+      ))}
+    </div>
+  )
+}
+
 function Facilities({ items }: { items: ExposureItem[] }) {
   if (!items.length) return <p className="text-sm text-muted-foreground">No mapped facilities in this zone.</p>
   const byType = TYPE_ORDER.map((t) => ({ t, list: items.filter((a) => a.type === t) })).filter((g) => g.list.length)
@@ -88,21 +110,26 @@ function Facilities({ items }: { items: ExposureItem[] }) {
   )
 }
 
-export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean }) {
+export function ZonePanel({ zone, name, tunable = false, payloads, region }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean; payloads?: ZonePayload[]; region?: Region }) {
   if (!zone) {
     return (
-      <Card>
+      <Card className="h-full">
         <CardHeader>
           <CardTitle>Place details</CardTitle>
           <CardDescription>Click a place on the map to see its forecast, why, and nearby facilities.</CardDescription>
         </CardHeader>
+        {payloads && (
+          <CardContent>
+            <OverviewStrip payloads={payloads} region={region} />
+          </CardContent>
+        )}
       </Card>
     )
   }
   const unknown = zone.coverage === "insufficient_data"
   const color = zone.severity ? SEVERITY_COLOR[zone.severity] : UNKNOWN_COLOR
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
         <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
@@ -112,6 +139,7 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {payloads && <OverviewStrip payloads={payloads} region={region} />}
         {!unknown && (
           <div className="grid grid-cols-4 gap-3">
             <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />

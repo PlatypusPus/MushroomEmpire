@@ -14,7 +14,7 @@ export function LiveHazard() {
   const failed = c ? Object.entries(c.sources).filter(([, s]) => !s.usable).map(([k]) => k) : []
 
   return (
-    <Card className="border-dashed">
+    <Card className="h-full border-dashed">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <RadioIcon className="size-4" /> Live hazard context
