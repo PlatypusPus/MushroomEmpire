@@ -1,9 +1,8 @@
 import * as React from "react"
 
-import { useAlertFeed, useEvents, useRegionZones, useRegions, useReplay, useTick } from "@/api/hooks"
-import { AlertFeed } from "@/components/alert-feed"
+import { useEvents, useReplayData } from "@/api/hooks"
+import { useAlertToasts } from "@/components/alert-feed"
 import { AppShell } from "@/components/app-shell"
-import { LiveHazard } from "@/components/live-hazard"
 import { RankingQueue } from "@/components/ranking-queue"
 import { RiskMap } from "@/components/risk-map"
 import { SectionCards } from "@/components/section-cards"
@@ -11,18 +10,11 @@ import { TimeSlider } from "@/components/time-slider"
 import { ZonePanel } from "@/components/zone-panel"
 import { useReplayStore } from "@/state/replayStore"
 
-const STEP_H = 3 // replay frame every 3 h of the event
-
 export default function Dashboard() {
-  const { eventId, tick, weights, selectedZone } = useReplayStore()
+  const selectedZone = useReplayStore((s) => s.selectedZone)
   const events = useEvents()
-  const regions = useRegions(eventId)
-  const region = regions.data?.[0]
-  const zones = useRegionZones(region?.id, eventId)
-  const replay = useReplay(eventId, STEP_H)
-  const ticks = replay.data?.ticks ?? []
-  const payloads = useTick(eventId, ticks[tick], weights)
-  const alerts = useAlertFeed(replay.data?.session_id, tick)
+  const { region, zones, ticks, now, names, rows, feed, error } = useReplayData()
+  useAlertToasts(feed, names, now) // the full feed lives on the Alerts page
 
   // Esc clears the selected zone
   React.useEffect(() => {
@@ -30,10 +22,6 @@ export default function Dashboard() {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [])
-
-  const names = React.useMemo(() => new Map((zones.data ?? []).map((z) => [z.id, z.name])), [zones.data])
-  const rows = payloads.data ?? []
-  const error = [regions, zones, replay, payloads].find((q) => q.error)?.error
 
   return (
     <AppShell>
@@ -48,15 +36,11 @@ export default function Dashboard() {
           <TimeSlider ticks={ticks} events={events.data ?? []} />
         </div>
         <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
-          <RiskMap zones={zones.data ?? []} payloads={rows} />
-          <div className="flex flex-col gap-4">
-            <AlertFeed feed={alerts.data ?? []} names={names} now={ticks[tick]} />
-            <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} />
-          </div>
+          <RiskMap zones={zones} payloads={rows} />
+          <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} />
         </div>
-        <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
+        <div className="px-4 lg:px-6">
           <RankingQueue payloads={rows} names={names} />
-          <LiveHazard />
         </div>
       </div>
     </AppShell>

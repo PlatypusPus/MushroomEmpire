@@ -19,7 +19,7 @@ export function LiveHazard() {
           <RadioIcon className="size-4" /> Live hazard context
         </CardTitle>
         <CardDescription>
-          Live today from NWS and NHC. Not part of the replay above and not fed into the model.
+          Live today from NWS and NHC. Not part of the historical storm replay and not fed into the model.
         </CardDescription>
         <CardAction>
           <Badge variant="outline">LIVE</Badge>
@@ -27,7 +27,7 @@ export function LiveHazard() {
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
         {q.isLoading && <div className="text-muted-foreground">Checking live feeds...</div>}
-        {q.error && <div className="text-muted-foreground">Live feeds unavailable (offline?). The replay above is unaffected.</div>}
+        {q.error && <div className="text-muted-foreground">Live feeds unavailable (offline?). The storm replay is unaffected.</div>}
         {c && (
           <>
             <div>

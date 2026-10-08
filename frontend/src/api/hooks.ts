@@ -1,4 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { useMemo } from "react"
+
+import { useReplayStore } from "@/state/replayStore"
 import { api, type SnapshotQuery, type Weights } from "./client"
 
 /** Local-LLM briefing for the selected zone only; paused while the replay plays so the 3B model isn't flooded. */
@@ -11,6 +14,27 @@ export function useZoneBriefing(zone_id: string | undefined, q: SnapshotQuery & 
     staleTime: Infinity,
     retry: 0,
   })
+}
+
+export const STEP_H = 3 // replay frame every 3 h of the event
+
+/** Everything the replay pages share: ticks, zone names, the current tick's payloads and the alert feed.
+ * React Query de-duplicates, so the dashboard, alerts page and sidebar badge all read the same requests. */
+export function useReplayData() {
+  const { eventId, tick, weights } = useReplayStore()
+  const regions = useRegions(eventId)
+  const region = regions.data?.[0]
+  const zones = useRegionZones(region?.id, eventId)
+  const replay = useReplay(eventId, STEP_H)
+  const ticks = replay.data?.ticks ?? []
+  const payloads = useTick(eventId, ticks[tick], weights)
+  const alerts = useAlertFeed(replay.data?.session_id, tick)
+  const names = useMemo(() => new Map((zones.data ?? []).map((z) => [z.id, z.name])), [zones.data])
+  return {
+    region, zones: zones.data ?? [], ticks, now: ticks[tick] as string | undefined, names,
+    rows: payloads.data ?? [], feed: alerts.data ?? [],
+    error: [regions, zones, replay, payloads].find((q) => q.error)?.error,
+  }
 }
 
 /** Live NWS/NHC hazard context. Refreshes every 5 min; never part of the replay or the model. */
