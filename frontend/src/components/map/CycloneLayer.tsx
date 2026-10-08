@@ -1,6 +1,7 @@
 import * as React from "react"
+import { useMap } from "react-leaflet"
 
-import { MapMarker, MapPolygon, MapPolyline, MapPopup } from "@/components/ui/map"
+import { MapMarker, MapPolygon, MapPopup } from "@/components/ui/map"
 
 import { useEnvLayers } from "@/api/hooks"
 import type { EnvCyclone } from "@/api/client"
@@ -15,7 +16,7 @@ function classLabel(c: EnvCyclone): string {
   return `${base} ${c.name}`
 }
 
-/** Live NHC storms: pulsing marker, forecast cone + track, detail popup. Toggle: cyclones. */
+/** Live NHC storms: pulsing marker, forecast cone boundary, detail popup. Toggle: cyclones. */
 export function CycloneLayer() {
   const on = useMapToggles((s) => s.cyclones)
   const { data } = useEnvLayers()
@@ -25,14 +26,14 @@ export function CycloneLayer() {
     <>
       {data.cyclones.map((s) => (
         <React.Fragment key={s.id}>
+          {/* boundary only: the forecast cone outline, no fill and no centre-track line */}
           {s.cone && s.cone.length > 2 && (
             <MapPolygon
               positions={[s.cone]}
-              pathOptions={{ color: "#a855f7", weight: 1.5, opacity: 0.9, dashArray: "5 4", fillColor: "#a855f7", fillOpacity: 0.12, interactive: false }}
+              // MapPolygon's default class paints fill and stroke with the foreground colour (a solid white cone); CSS beats the SVG attributes, so override it
+              className="fill-transparent stroke-purple-500 stroke-2"
+              pathOptions={{ color: "#a855f7", weight: 2, opacity: 0.95, dashArray: "6 4", fill: false, interactive: false }}
             />
-          )}
-          {s.track && s.track.length > 1 && (
-            <MapPolyline positions={s.track} pathOptions={{ color: "#64748b", weight: 2, opacity: 0.85, interactive: false }} />
           )}
           <MapMarker
             position={[s.lat, s.lon]}
@@ -53,7 +54,7 @@ export function CycloneLayer() {
                   {s.heading_toward_region && " · heading this way"}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  NHC advisory {new Date(s.last_update).toLocaleString()} · cone and track are live, not the replay
+                  NHC advisory {new Date(s.last_update).toLocaleString()} · cone is live, not the replay
                 </div>
               </div>
             </MapPopup>
@@ -62,4 +63,17 @@ export function CycloneLayer() {
       ))}
     </>
   )
+}
+
+/** Live view: zoom out once so the storm's forecast cone and the region are both in frame (a distant storm is otherwise off-screen). */
+export function FitLive() {
+  const map = useMap()
+  const { data } = useEnvLayers()
+  const key = data?.cyclones.map((c) => c.id).join(",") ?? ""
+  React.useEffect(() => {
+    const pts = (data?.cyclones ?? []).flatMap((c) => (c.cone?.length ? c.cone.filter((_, i) => i % 10 === 0) : [[c.lat, c.lon] as [number, number]]))
+    if (pts.length) map.fitBounds([REGION_CENTER, ...pts], { padding: [30, 30], maxZoom: 8 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map])
+  return null
 }

@@ -8,7 +8,8 @@ import { useReplayStore } from "@/state/replayStore"
 
 const TICK_MS = 1000
 
-export function TimeSlider({ ticks, events }: { ticks: string[]; events: CoastEvent[] }) {
+/** `events` is optional: pages that already have an event picker (the dashboard) leave it out. */
+export function TimeSlider({ ticks, events }: { ticks: string[]; events?: CoastEvent[] }) {
   const { tick, playing, setTick, setPlaying, eventId, setEvent } = useReplayStore()
 
   React.useEffect(() => {
@@ -35,6 +36,7 @@ export function TimeSlider({ ticks, events }: { ticks: string[]; events: CoastEv
         />
         <div className="text-sm tabular-nums">
           <div className="font-medium">{now ? clock(now, true) : "..."}</div>
+          {events && (
           <select
             value={eventId}
             onChange={(e) => setEvent(+e.target.value)}
@@ -48,6 +50,7 @@ export function TimeSlider({ ticks, events }: { ticks: string[]; events: CoastEv
             ))}
             {!events.some((ev) => ev.id === eventId) && <option value={eventId}>Event {eventId}</option>}
           </select>
+          )}
           <div className="text-xs text-muted-foreground">replay of held-out data · gauge clock, timezone unverified</div>
         </div>
       </CardContent>

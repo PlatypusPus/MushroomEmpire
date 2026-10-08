@@ -7,11 +7,13 @@ export const DEFAULT_WEIGHTS: Weights = {
 }
 
 interface ReplayState {
+  mode: "live" | "replay"
   eventId: number
   tick: number
   playing: boolean
   selectedZone: string | null
   weights: Weights
+  setMode: (m: "live" | "replay") => void
   setEvent: (id: number) => void
   setTick: (i: number) => void
   setPlaying: (p: boolean) => void
@@ -20,12 +22,14 @@ interface ReplayState {
 }
 
 export const useReplayStore = create<ReplayState>((set) => ({
+  mode: "live", // the dashboard opens on the live official hazards; the model replays are one click away
   eventId: 5, // Hurricane Nicole, Nov 2022 (ROOT_CONTEXT 20.2a)
   tick: 0,
   playing: false,
   selectedZone: null,
   weights: DEFAULT_WEIGHTS,
-  setEvent: (eventId) => set({ eventId, tick: 0, playing: false, selectedZone: null }),
+  setMode: (mode) => set({ mode, playing: false, selectedZone: null }),
+  setEvent: (eventId) => set({ eventId, mode: "replay", tick: 0, playing: false, selectedZone: null }),
   setTick: (tick) => set({ tick }),
   setPlaying: (playing) => set({ playing }),
   select: (selectedZone) => set({ selectedZone }),
