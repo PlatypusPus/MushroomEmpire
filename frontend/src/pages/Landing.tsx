@@ -1,6 +1,7 @@
 import { Link } from "react-router"
+import { SpinningGlobe } from "@/components/spinning-globe"
 
-// Pure CSS scene (no image asset): starfield, lens-flare sun, night-side Earth with a lit limb and city lights.
+// Starfield (CSS) behind a spinning night-lights Earth (three.js).
 const STARS = Array.from({ length: 90 }, (_, i) => ({
   left: `${(i * 37.7) % 100}%`,
   top: `${(i * 53.3 + (i % 7) * 11) % 100}%`,
@@ -15,18 +16,7 @@ export default function Landing() {
         <span key={i} className="absolute rounded-full bg-white" style={{ left: s.left, top: s.top, width: s.size, height: s.size, opacity: s.opacity }} />
       ))}
 
-      {/* sun */}
-      <div className="absolute left-[20%] top-[32%] size-[300px] -translate-x-1/2 -translate-y-1/2"
-        style={{ background: "radial-gradient(circle, #fff 0 4%, #cfe6ff 8%, rgba(70,140,255,.45) 18%, rgba(30,80,200,.18) 38%, transparent 66%)" }} />
-
-      {/* earth */}
-      <div className="absolute left-[34%] top-1/2 aspect-square h-[130vh] -translate-y-1/2 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle at 75% 45%, #0a1426 0, #050a14 40%, #02050b 75%)",
-          boxShadow:
-            "inset 14px 0 18px -6px #cfe6ff, inset 60px 0 70px -20px rgba(70,150,255,.75), inset 160px 0 160px -80px rgba(30,90,200,.45), -20px 0 90px rgba(60,130,255,.35)",
-        }} />
+      <SpinningGlobe className="absolute left-[34%] top-1/2 h-[120vh] w-[170vh] -translate-x-1/2 -translate-y-1/2" />
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#02050c]/70" />
 
