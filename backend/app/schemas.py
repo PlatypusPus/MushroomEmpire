@@ -69,6 +69,12 @@ class FeatureVector(Strict):
     hand_m: float | None
     elevation_m: float | None
     is_simulated: bool
+    # level history, same stage units as level_m (feature study: the biggest accuracy gain). None = not enough readings
+    level_change_6h: float | None = None
+    level_change_24h: float | None = None
+    level_max_24h: float | None = None
+    level_max_72h: float | None = None
+    level_std_24h: float | None = None
 
 
 class DepthQuantiles(Strict):

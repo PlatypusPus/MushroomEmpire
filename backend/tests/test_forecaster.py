@@ -15,7 +15,8 @@ def test_lightgbm_trajectory_is_ordered_and_explained():
     t = Forecaster.load().forecast(fv)
     assert len(t.steps) == 24 and t.model.startswith("lightgbm")
     assert all(s.depth_m.q10 <= s.depth_m.q50 <= s.depth_m.q90 for s in t.steps)
-    assert t.drivers and {d.feature for d in t.drivers} <= {"level", "trend", "rain_6h", "rain_24h", "rain_72h", "hand_m", "elevation_m"}
+    from app.agents.explain import PHRASES
+    assert t.drivers and all(d.feature in PHRASES for d in t.drivers)  # every driver must have a plain-language phrase
 
 
 def test_missing_rain_does_not_crash_and_agent_returns_a_trajectory():

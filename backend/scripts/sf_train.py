@@ -2,8 +2,8 @@
 
 Run from backend/: uv run python -m scripts.sf_train
 Split by time, never by row: train S_5 (2010-2014), early stopping on S_6 (2015-2019), test S_7 (2020-2023, holdout).
-Thresholds (train-only q95 per gauge) are computed from S_5 only. Writes models_store/lightgbm_v1.joblib and
-data/processed/metrics_lightgbm_v1.json.
+Thresholds (train-only q95 per gauge) are computed from S_5 only. Writes models_store/lightgbm_v2.joblib and
+data/processed/metrics_lightgbm_v2.json.
 """
 import asyncio
 import json
@@ -55,7 +55,10 @@ def build():
         if r.name not in V.columns:
             continue
         rg = [x for x in rain_of.get(r.zone_id, []) if x in R.columns]
-        f = pd.DataFrame({"level": level[r.name], "trend": trend[r.name]})
+        lv = level[r.name]
+        f = pd.DataFrame({"level": lv, "trend": trend[r.name], "change_6h": lv - lv.shift(6), "change_24h": lv - lv.shift(24),
+                          "max_24h": lv.rolling(24, min_periods=12).max(), "max_72h": lv.rolling(72, min_periods=36).max(),
+                          "std_24h": lv.rolling(24, min_periods=12).std()})
         for w in (6, 24, 72):
             f[f"rain_{w}h"] = rain[w][rg].mean(axis=1) if rg else np.nan
         f["hand_m"], f["elevation_m"] = r.hand_m, r.elevation_m
@@ -70,9 +73,9 @@ async def record(metrics):
     """One model_runs row per version (replaced on retrain); the metrics endpoint reads it."""
     eng = create_async_engine(settings.database_url)
     async with eng.begin() as c:
-        await c.execute(text("delete from model_runs where model_name = :n and version = :v"), {"n": "lightgbm-quantile", "v": "v1"})
+        await c.execute(text("delete from model_runs where model_name = :n"), {"n": "lightgbm-quantile"})  # one live model row
         await c.execute(text("insert into model_runs (model_name, version, region_id, trained_on_splits, metrics_json) values (:n, :v, 1, cast(:s as json), cast(:m as json))"),
-                        {"n": "lightgbm-quantile", "v": "v1", "s": json.dumps(["S_5"]), "m": json.dumps(metrics)})
+                        {"n": "lightgbm-quantile", "v": "v2", "s": json.dumps(["S_5"]), "m": json.dumps(metrics)})
     await eng.dispose()
 
 
@@ -127,7 +130,7 @@ def main():
         out[f"exceed24h_{name}"] = dict(n=int(mask.sum()), base_rate=float(e.mean()),
             pr_auc_model=float(average_precision_score(e, pm[mask])), pr_auc_persistence=float(average_precision_score(e, pb[mask])),
             brier_model=float(brier_score_loss(e, pm[mask])), brier_persistence=float(brier_score_loss(e, pb[mask])))
-    (ROOT / "metrics_lightgbm_v1.json").write_text(json.dumps(out, indent=1))
+    (ROOT / "metrics_lightgbm_v2.json").write_text(json.dumps(out, indent=1))
     asyncio.run(record(out))
     print(json.dumps({k: (v if k.startswith("exceed") else None) for k, v in out.items() if k.startswith("exceed")}, indent=1))
     print(pd.DataFrame(out["by_lead"]).T.round(3).to_string())
