@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import type { AssistantResult, ChatMessage } from "@/api/client"
 import { streamAssistant } from "@/api/client"
 import { useReplay } from "@/api/hooks"
-import { useReplayStore } from "@/state/replayStore"
+import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Button } from "@/components/ui/button"
 import {
   CardContent,
@@ -48,7 +48,8 @@ export function ChatPanel({ className }: { className?: string }) {
   const [model, setModel] = React.useState("")
   const [source, setSource] = React.useState("")
   const [status, setStatus] = React.useState("")
-  const { eventId, tick, weights } = useReplayStore()
+  const { eventId, tick } = useReplayStore()
+  const weights = DEFAULT_WEIGHTS // same fixed ranking as the dashboard; tuning lives on Response priority only
   const replay = useReplay(eventId, 3)
   const issueTs = replay.data?.ticks[tick]
   const abortRef = React.useRef<AbortController | null>(null)

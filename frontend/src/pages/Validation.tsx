@@ -1,6 +1,8 @@
-// Model honesty: held-out metrics exactly as Lane B recorded them in model_runs. Nothing here is recomputed or rounded up.
+// Model validation: held-out metrics exactly as Lane B recorded them in model_runs. Nothing here is recomputed or rounded up.
 import { useMetrics } from "@/api/hooks"
 import { AppShell } from "@/components/app-shell"
+import { ChartLeadInteractive, type LeadRow } from "@/components/chart-lead-interactive"
+import { CalibrationChart, DetectionChart, SimpleBarChart, SkillChart } from "@/components/validation-charts"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -41,7 +43,7 @@ function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) 
   )
 }
 
-export default function Honesty() {
+export default function Validation() {
   const q = useMetrics(REGION_ID)
   const run = q.data?.[0]
   const m: any = run?.metrics ?? {}
@@ -50,11 +52,37 @@ export default function Honesty() {
   const peak = m.peak_eval?.methods ?? {}
   const rev = m.review?.A ?? {}
 
+  // chart data, straight from the recorded metrics
+  const detection = [
+    ["All cases", det.all], ["New rise", det.starting_below_mark], ["Already high", det.already_above_mark],
+  ].map(([label, d]: any) => ({ case: label, caught: d?.hits ?? 0, falseAlarms: d?.false_alarms ?? 0, missed: d?.misses ?? 0 }))
+  const skill = [
+    { measure: "Any event in 24 h", model: m.exceed24h_any?.pr_auc_model, persistence: m.exceed24h_any?.pr_auc_persistence },
+    { measure: "New onset", model: m.exceed24h_onset_from_below?.pr_auc_model, persistence: m.exceed24h_onset_from_below?.pr_auc_persistence },
+  ]
+  const byLead: LeadRow[] = [
+    ...Object.entries(m.by_lead ?? {}).map(([h, d]: any) => ({
+      lead: `${h} h`, errModel: d.mae_model, errPersistence: d.mae_persistence,
+      covModel: d.coverage_q10_q90_model, covPersistence: d.coverage_q10_q90_persistence,
+    })),
+    ...Object.entries(m.horizons ?? {}).map(([h, d]: any) => ({
+      lead: `${h} h`, errModel: d.mae_model, errPersistence: d.mae_persistence, covModel: d.coverage_q10_q90,
+    })),
+  ]
+  const peakBars = [
+    { label: "Peak model", value: peak.new_peak_model?.mae_h },
+    { label: "Old method", value: peak.old_trajectory_argmax?.mae_h },
+    { label: "Guess noon", value: peak.fixed_hour?.mae_h },
+  ].filter((d) => typeof d.value === "number")
+  const onsetBands = Object.entries(v["recall_by_true_onset_band_(starting_below)"] ?? {}).map(([band, d]: any) => ({
+    label: band.replace("true_onset_", "in "), value: d.recall,
+  }))
+
   return (
     <AppShell>
       <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
         <div>
-          <h1 className="text-2xl font-semibold">Model honesty</h1>
+          <h1 className="text-2xl font-semibold">Model validation</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
             Every number below comes from the held-out years 2020 to 2023 (split S_7), which the model never saw in training
             (2010 to 2014) or tuning (2015 to 2019). Labels are gauge high-water episodes (3 or more hours above a gauge's usual
@@ -75,6 +103,7 @@ export default function Honesty() {
         {run && (
           <>
             <Section title="Alerts: hits, misses and false alarms" sub="At the validated alert threshold, event within the next 24 h. Denominators shown.">
+              <DetectionChart data={detection} />
               <Table
                 head={["Case", "Events", "Caught", "Missed", "False alarms", "Precision", "Recall", "False-alarm rate"]}
                 rows={[
@@ -90,7 +119,8 @@ export default function Honesty() {
             </Section>
 
             <div className="grid grid-cols-1 gap-4 md:gap-6 @3xl/main:grid-cols-2 lg:grid-cols-2">
-              <Section title="Against a simple baseline" sub="Persistence: assume today's level and trend carry on.">
+              <Section title="Against a simple baseline" sub="PR-AUC, higher is better. Persistence: assume today's level and trend carry on.">
+                <SkillChart data={skill} />
                 <Table
                   head={["Measure", "Model", "Persistence", "Base rate"]}
                   rows={[
@@ -101,11 +131,15 @@ export default function Honesty() {
                 />
               </Section>
 
-              <Section title="Calibration" sub="When we say 50%, does it happen about half the time?">
-                <Table
-                  head={["Predicted band", "Cases", "Predicted", "Observed"]}
-                  rows={(v.probability?.reliability_calibrated ?? []).map((b: any) => [b.bin, int(b.n), pct(b.predicted), pct(b.observed)])}
-                />
+              <Section title="Calibration" sub="When we say 50%, does it happen about half the time? Dots on the dashed line are perfect.">
+                <CalibrationChart data={v.probability?.reliability_calibrated ?? []} />
+                <details className="mt-2 text-sm">
+                  <summary className="cursor-pointer text-xs text-muted-foreground">Show the numbers</summary>
+                  <Table
+                    head={["Predicted band", "Cases", "Predicted", "Observed"]}
+                    rows={(v.probability?.reliability_calibrated ?? []).map((b: any) => [b.bin, int(b.n), pct(b.predicted), pct(b.observed)])}
+                  />
+                </details>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Expected calibration error {num(v.probability?.ece_calibrated, 3)} after calibration (was {num(v.probability?.ece_raw, 3)}).
                   High water happened slightly less often in the holdout years than predicted.
@@ -113,18 +147,20 @@ export default function Honesty() {
               </Section>
             </div>
 
-            <Section title="Accuracy by forecast lead" sub="Mean absolute water-level error in stage units (units unverified, so read it only as model vs baseline).">
+            <ChartLeadInteractive data={byLead} />
+            <details className="-mt-2 px-1 text-sm">
+              <summary className="cursor-pointer text-xs text-muted-foreground">Show the numbers by lead</summary>
               <Table
                 head={["Lead", "Model error", "Persistence error", "Model q10 to q90 coverage (target 80%)"]}
-                rows={[
-                  ...Object.entries(m.by_lead ?? {}).map(([h, d]: any) => [`${h} h`, num(d.mae_model), num(d.mae_persistence), pct(d.coverage_q10_q90_model)]),
-                  ...Object.entries(m.horizons ?? {}).map(([h, d]: any) => [`${h} h`, num(d.mae_model), num(d.mae_persistence), pct(d.coverage_q10_q90)]),
-                ]}
+                rows={byLead.map((r) => [r.lead, num(r.errModel), num(r.errPersistence), pct(r.covModel)])}
               />
-            </Section>
+            </details>
 
             <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-              <Section title="Timing" sub="Hours off, for events that were caught.">
+              <Section title="Timing" sub="Hours off, for events that were caught. Lower is better.">
+                <SimpleBarChart data={peakBars} unit="h" label="Mean peak-time error" />
+                <div className="mt-2 text-xs font-medium text-muted-foreground">New rises caught, by how far ahead they start</div>
+                <SimpleBarChart data={onsetBands} unit="%" label="Caught" />
                 <Table
                   head={["What", "Mean error", "Typical (median)", "Notes"]}
                   rows={[

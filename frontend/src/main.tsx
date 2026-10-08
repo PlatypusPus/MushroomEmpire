@@ -6,8 +6,11 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
 import Landing from "./pages/Landing";
-import Honesty from "./pages/Honesty";
 import Account from "./pages/Account";
+import Validation from "./pages/Validation";
+import Alerts from "./pages/Alerts";
+import Priority from "./pages/Priority";
+import LiveHazards from "./pages/LiveHazards";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -24,8 +27,12 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/" element={<Landing />} />
             <Route path="/dashboard" element={<div className="animate-[page-in_700ms_ease-out]"><Dashboard /></div>} />
             <Route path="/chat" element={<Chat />} />
-            <Route path="/honesty" element={<Honesty />} />
             <Route path="/account" element={<Account />} />
+            <Route path="/validation" element={<Validation />} />
+            <Route path="/honesty" element={<Navigate to="/validation" replace />} />
+            <Route path="/priority" element={<Priority />} />
+            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/live" element={<LiveHazards />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
