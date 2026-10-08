@@ -321,12 +321,16 @@ Fewer people: merge A with B, or C with D. Never merge B with C. Critical path: 
 
 ## 20. Open decisions
 
-1. Hackathon duration and demo slot length?
-2. Which coast is the deep region, and which held-out event?
-3. Real timing labels or a labelled simulation?
+1. Hackathon duration and demo slot length? Resolved: 5 to 6 minutes, confirmed by the user.
+2. Which coast is the deep region? Resolved: **Kerala** (southwest coast). GFF ties on raw count (Kerala, Gujarat, Odisha, 2 near-coastal tiles each), but Kerala is the only one where the well-documented outside event and the GFF-labelled tiles fall in the same year: the August 2018 floods (reservoir-release timing, rainfall gauge records, multiple post-event studies); both Kerala GFF tiles are from 2018. Odisha's strong outside cases (IMD-timed cyclone landfalls) are 2013/2019/2021, not its 2015 GFF tiles. Gujarat has no comparable outside case. Transfer region unchanged: Abu Dhabi via CASPIAN's synthetic SLR dataset (Phase 7 extra, see section 15, item 1).
+2a. Which held-out event? **Still open**, narrower now. Candidates are Kerala's two GFF tiles: `76.775E, 8.887N` (post-image 2018-08-09, pre-dates the Aug 15-17 peak) and `76.043E, 10.788N` (window 2018-06-03 to 06-15, an earlier monsoon pulse, not the catastrophic event). Neither is confirmed to capture the event everyone cites (unverified). Next step: check whether CWC/IMD/Kerala SDMA rainfall or Idukki dam release records give hour-level onset and peak for either window.
+3. Real timing labels or a labelled simulation? **Open**, depends on 2a. If no hour-level records are found for either window, fall back to Option B (labelled simulation) for Kerala (section 12, item 1).
 4. Does CASPIAN pass the Phase 7 promotion gate (section 15, item 1)?
 5. Demo tick cadence (section 15, item 3)?
 6. LLM provider and key for the Briefing agent? Answered: none yet, build template-only briefing (same output format) and add an LLM behind it later.
 7. Team size, which decides how lanes merge? Answered: 3 to 4 people, one lane each (section 17).
 8. Does the `coastguard` role authenticate through the tunnel (`pg_hba.conf` unread)?
 9. Is a no-auth, single-tenant demo acceptable for the audience?
+10. How far back does the Open-Meteo previous-runs archive go for Kerala? Not yet checked. It limits which event can be replayed.
+
+Resolved side note: GFF has 9 real India-only near-coastal tiles after removing Sri Lanka, Myanmar and Bangladesh bounding-box spillover (the "21" in section 11 is the uncorrected box count): Kerala 2, Gujarat 2, Odisha 2, Tamil Nadu 1, Andhra Pradesh 1, Maharashtra 1.
