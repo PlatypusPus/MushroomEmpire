@@ -16,6 +16,7 @@ from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnablePas
 
 from app.agents.briefing_io import NUM, briefing_input
 from app.agents.briefing_llm import FORBIDDEN
+from app.config import settings
 from app.llm.client import LLMUnavailable, chat
 from app.schemas import ZonePayload
 
@@ -229,7 +230,8 @@ async def compose(x: dict) -> dict:
         out["answer"] = f"Insufficient data, {facts['zone_name']}. Risk unknown."
         return out
     try:
-        res = await chat([{"role": "user", "content": json.dumps({"question": x["question"], "facts": facts}, default=str)}], system=SYSTEM)
+        res = await chat([{"role": "user", "content": json.dumps({"question": x["question"], "facts": facts}, default=str)}], system=SYSTEM,
+                         max_tokens=settings.llm_chat_max_tokens, timeout_s=settings.llm_chat_timeout_s)
         text = res.text.strip()
         bad = _numbers_ok(text, facts)
         if bad:

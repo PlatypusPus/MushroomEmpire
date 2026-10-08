@@ -25,17 +25,20 @@ def _window(w):
     return None if w is None else {"earliest": clock(w.earliest), "likely": clock(w.likely), "latest": clock(w.latest)}
 
 
-def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
+def _status(p: ZonePayload) -> str:
     if p.probability is None:
-        status = "insufficient_data"
-    elif p.onset is None and p.probability >= calibration.alert_threshold():
-        status = "episode_possible"  # median stays under the mark but the upper band crosses it: validated alert rule
-    elif p.onset is None:
-        status = "no_episode_expected"
-    elif p.onset.likely - p.issue_ts <= timedelta(hours=1):  # the first forecast step is already above the mark
-        status = "already_above_normal_high_water"
-    else:
-        status = "episode_expected"
+        return "insufficient_data"
+    if p.onset is None and p.probability >= calibration.alert_threshold():
+        return "episode_possible"  # median stays under the mark but the upper band crosses it: validated alert rule
+    if p.onset is None:
+        return "no_episode_expected"
+    if p.onset.likely - p.issue_ts <= timedelta(hours=1):  # the first forecast step is already above the mark
+        return "already_above_normal_high_water"
+    return "episode_expected"
+
+
+def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
+    status = _status(p)
     counts = Counter(e.type for e in p.exposure)
     named = [e.name for e in p.exposure if e.type == "hospital"][:max_names]  # only confirmed-kind facilities are named
     return {
@@ -60,6 +63,64 @@ def allowed_numbers(inp: dict) -> set[str]:
                                                       *(inp["onset"] or {}).values(), *(inp["peak"] or {}).values(),
                                                       *inp["exposure_counts"].values(), *inp["hospitals_named"], *inp["drivers"], inp["explanation"] or ""])))
     return nums
+
+
+def briefing_prompt(p: ZonePayload, zone_name: str) -> dict:
+    """Minimal status-conditioned prompt for the 2 to 3 sentence briefing.
+
+    Same `status` derivation as briefing_input, but only the fields the output
+    may use: causes collapse to one `reasons` list (no drivers/explanation/
+    alert_text triple telling), times only where the rules allow them, exposure
+    only when the zone has mapped facilities, and no rank/caveat boilerplate
+    (labels are added server-side, never by the model).
+    """
+    status = _status(p)
+    d: dict = {"zone_name": zone_name, "status": status, "severity": p.severity}
+    if p.probability is not None:
+        d["probability_pct"] = round(p.probability * 100)
+    if status == "episode_expected":
+        if p.onset is not None:
+            d["onset"] = clock(p.onset.likely)
+        if p.peak is not None:
+            d["peak"] = clock(p.peak.likely)
+    elif status == "already_above_normal_high_water":
+        if p.peak is not None:
+            d["peak"] = clock(p.peak.likely)
+    # episode_possible / no_episode_expected: no times (the rules forbid them).
+    reasons = [r.phrase for r in p.reasons][:3] or list(p.drivers_text[:3])
+    if reasons:
+        d["reasons"] = reasons
+    if p.exposure:
+        counts = dict(Counter(e.type for e in p.exposure))
+        if counts:
+            d["exposure_counts"] = counts
+        named = [e.name for e in p.exposure if e.type == "hospital"][:2]
+        if named:
+            d["hospitals"] = named
+    return d
+
+
+def prompt_allowed_numbers(inp: dict) -> set[str]:
+    """Grounding set matching briefing_prompt: every number the model may print."""
+    bits = [inp.get("zone_name"), inp.get("probability_pct")]
+    for k in ("onset", "peak"):
+        if inp.get(k) is not None:
+            bits.append(inp[k])
+    for r in inp.get("reasons") or []:
+        bits.append(r)
+    for v in (inp.get("exposure_counts") or {}).values():
+        bits.append(v)
+    for h in inp.get("hospitals") or []:
+        bits.append(h)
+    return set(NUM.findall(" ".join(str(x) for x in bits if x is not None)))
+
+
+def grounded_prompt(text: str, inp: dict) -> str:
+    """Raise ValueError if the text contains a number not present in its trimmed prompt."""
+    bad = [n for n in NUM.findall(text) if n not in prompt_allowed_numbers(inp)]
+    if bad:
+        raise ValueError(f"briefing invented numbers {bad}: {text!r}")
+    return text
 
 
 def grounded(text: str, inp: dict) -> str:

@@ -95,7 +95,8 @@ def _content_to_text(content: object) -> str:
 
 
 async def chat(
-    messages: list[dict[str, str]], *, system: str | None = None
+    messages: list[dict[str, str]], *, system: str | None = None,
+    max_tokens: int | None = None, timeout_s: float | None = None,
 ) -> ChatResult:
     """One chat turn. Raises LLMUnavailable when the model cannot answer."""
     convo = [{"role": "system", "content": system or SYSTEM}, *messages]
@@ -106,7 +107,8 @@ async def chat(
             api_base=settings.ollama_base_url or None,
             api_key=settings.llm_api_key or None,
             temperature=settings.llm_temperature,
-            timeout=settings.llm_timeout_s,
+            timeout=timeout_s or settings.llm_timeout_s,
+            max_tokens=max_tokens,
         )
     except Exception as exc:  # timeout, connection refused, unknown model
         raise LLMUnavailable(

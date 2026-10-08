@@ -7,8 +7,8 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 const SHOWN_ASSETS = 12
 
 function Briefing({ zone }: { zone: ZonePayload }) {
-  const { eventId, playing } = useReplayStore()
-  const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts }, !playing)
+  const { eventId, playing, weights } = useReplayStore()
+  const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts, ...weights }, !playing)
   if (playing) return <div className="text-xs text-muted-foreground">Briefing pauses while the replay plays.</div>
   return (
     <div>
