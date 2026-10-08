@@ -1,3 +1,4 @@
+import "@fontsource-variable/montserrat"
 import { Link } from "react-router"
 import { SpinningGlobe } from "@/components/spinning-globe"
 
@@ -20,18 +21,16 @@ export default function Landing() {
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/70" />
 
-      <div className="relative z-10 flex flex-col items-center text-center">
-        <h1 className="bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-6xl font-semibold tracking-[0.18em] text-transparent md:text-7xl"
-          style={{ fontFamily: "Montserrat, 'Inter Variable', sans-serif" }}>
+      <div className="relative z-10 flex flex-col items-center text-center font-[Montserrat_Variable,'Inter_Variable',sans-serif]">
+        <h1 className="bg-gradient-to-b from-white via-zinc-100 to-zinc-500 bg-clip-text text-6xl font-normal tracking-[0.2em] drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)] text-transparent md:text-8xl">
           SHROOMCAST
         </h1>
-        <p className="mt-8 text-xs tracking-[0.55em] text-zinc-400 md:text-sm">CLEAR FORESIGHT FOR RISING WATERS.</p>
-        <Link to="/dashboard" className="mt-12 rounded-full border border-white/25 px-8 py-2.5 text-xs tracking-[0.35em] text-white/80 transition hover:border-white/60 hover:bg-white/10 hover:text-white">
+        <div className="mt-7 h-px w-16 bg-white/30" />
+        <p className="mt-7 text-[11px] font-medium tracking-[0.5em] text-zinc-300/80 md:text-sm">CLEAR FORESIGHT FOR RISING WATERS</p>
+        <Link to="/dashboard" className="mt-14 rounded-full border border-white/30 bg-white/5 px-9 py-3 text-[11px] font-medium tracking-[0.35em] text-white/85 backdrop-blur-sm transition hover:border-white/70 hover:bg-white/15 hover:text-white">
           ENTER DASHBOARD
         </Link>
       </div>
-
-      <p className="absolute bottom-6 text-[10px] tracking-[0.25em] text-zinc-500">ZONE-LEVEL FLOOD INTELLIGENCE · DETERMINISTIC REPLAY</p>
     </main>
   )
 }
