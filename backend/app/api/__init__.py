@@ -224,17 +224,29 @@ async def tick_stream(issue_ts: datetime | None = None, event_id: int | None = N
     return StreamingResponse(events(), media_type="text/event-stream")
 
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class AssistantRequest(BaseModel):
     question: str
     zone_id: str | None = None  # the zone currently selected in the UI, used when the question names none
     issue_ts: datetime | None = None
     event_id: int | None = None
     weights: Weights | None = None  # dashboard slider weights: same key = same replay.tick cache hit
+    messages: list[ChatMessage] | None = None  # recent conversation, newest last; resolves follow-ups ("check again")
+
+
+def _assistant_history(req: AssistantRequest) -> list[dict]:
+    """Last turns of the conversation, trimmed; the assistant re-trims anyway."""
+    return [m.model_dump() for m in (req.messages or [])[-8:] if m.content.strip()]
 
 
 @router.post("/assistant")
 async def assistant(req: AssistantRequest) -> dict:
-    """Grounded Q&A: routed to the agents' outputs, phrased by the local model, number-checked, template fallback (`source` says which)."""
+    """Grounded Q&A: the orchestrator plans which agents to consult, runs their
+    tools, phrases the combined result, number-checks it, template fallback (`source` says which)."""
     from app import assistant as asst
 
     if not req.question.strip():
@@ -243,7 +255,8 @@ async def assistant(req: AssistantRequest) -> dict:
     ps = list(await payloads(eid, req.issue_ts, req.weights))
     from app import context
 
-    return await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id, context.get_context)
+    return await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id,
+                          context.get_context, _assistant_history(req))
 
 
 @router.get("/context")
@@ -275,58 +288,14 @@ async def zone_context(zone_id: str, model_probability: float | None = None, eve
 async def assistant_stream(req: AssistantRequest):
     """Token stream (SSE) for the grounded assistant.
 
-    Runs the same route -> facts -> compose (+ guards, template fallback) as
+    Runs the same plan -> tools -> compose (+ guards, template fallback) as
     POST /api/assistant, then streams the final guarded answer in word chunks.
-    Chunking after the guard (instead of streaming raw LLM tokens) keeps the
-    number/forbidden-word checks intact. Events: {"status": str} progress,
-    {"token": str} answer chunks, then
-    {"done": true, "model", "intent", "zone_id", "source"}, or {"error": str}.
-    """
-    import re
-
-    from app import assistant as asst
-
-    if not req.question.strip():
-        raise HTTPException(422, "question must not be empty")
-
-    async def events():
-        try:
-            yield f"data: {json.dumps({'status': 'loading zone data'})}\n\n"
-            eid, snap = await active(req.event_id)
-            ps = list(await payloads(eid, req.issue_ts, req.weights))
-            try:
-                preview = asst.route({"question": req.question, "zones": snap.zones, "zone_id": req.zone_id})
-                zone_name = next((z["name"] for z in snap.zones if z["id"] == preview.get("zone_id")), None)
-                label = zone_name or "ranking"
-                yield f"data: {json.dumps({'status': f'found {label} · phrasing'})}\n\n"
-            except Exception:
-                yield f"data: {json.dumps({'status': 'phrasing'})}\n\n"
-            res = await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id)
-        except HTTPException as e:
-            yield f"data: {json.dumps({'error': e.detail})}\n\n"
-            return
-        except Exception as e:  # snapshot/pipeline failure: SSE error, not a broken stream
-            yield f"data: {json.dumps({'error': str(e)[:200]})}\n\n"
-            return
-        answer = res.get("answer", "")
-        # Word chunks that concatenate back to the exact answer.
-        for chunk in re.findall(r"\S+\s*|\s+", answer):
-            yield f"data: {json.dumps({'token': chunk})}\n\n"
-        yield f"data: {json.dumps({'done': True, 'model': res.get('model'), 'intent': res.get('intent'), 'zone_id': res.get('zone_id'), 'source': res.get('source')})}\n\n"
-
-    return StreamingResponse(events(), media_type="text/event-stream")
-
-
-@router.post("/assistant/stream")
-async def assistant_stream(req: AssistantRequest):
-    """Token stream (SSE) for the grounded assistant.
-
-    Runs the same route -> facts -> compose (+ guards, template fallback) as
-    POST /api/assistant, then streams the final guarded answer in word chunks.
-    Chunking after the guard (instead of streaming raw LLM tokens) keeps the
-    number/forbidden-word checks intact. Events: {"status": str} progress,
-    {"token": str} answer chunks, then
-    {"done": true, "model", "intent", "zone_id", "source"}, or {"error": str}.
+    Planning runs first so the progress status names the real plan
+    ("checked Miami + live alerts · phrasing"). Chunking after the guard
+    (instead of streaming raw LLM tokens) keeps the number/forbidden-word
+    checks intact. Events: {"status": str} progress, {"token": str} answer
+    chunks, then {"done": true, "model", "intent", "zone_id", "source",
+    "tools"}, or {"error": str}.
     """
     import re
 
@@ -335,20 +304,24 @@ async def assistant_stream(req: AssistantRequest):
 
     if not req.question.strip():
         raise HTTPException(422, "question must not be empty")
+    history = _assistant_history(req)
 
     async def events():
         try:
-            yield f"data: {json.dumps({'status': 'loading zone data'})}\n\n"
+            yield f"data: {json.dumps({'status': 'checking zone data'})}\n\n"
             eid, snap = await active(req.event_id)
             ps = list(await payloads(eid, req.issue_ts, req.weights))
-            try:
-                preview = asst.route({"question": req.question, "zones": snap.zones, "zone_id": req.zone_id})
-                zone_name = next((z["name"] for z in snap.zones if z["id"] == preview.get("zone_id")), None)
-                label = zone_name or "ranking"
-                yield f"data: {json.dumps({'status': f'found {label} · phrasing'})}\n\n"
-            except Exception:
-                yield f"data: {json.dumps({'status': 'phrasing'})}\n\n"
-            res = await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id, context.get_context)
+            plan = await asst.aplan(req.question, snap.zones, req.zone_id, history)
+            names = {z["id"]: z["name"] for z in snap.zones}
+            label = ", ".join(names[z] for z in plan["zone_ids"] if z in names) or {
+                "top": "ranking", "model": "forecast reliability",
+                "context": "official alerts", "meta": "chat", "help": "chat",
+            }.get(plan["intent"], "zone data")
+            if plan.get("needs_live"):
+                label += " + live alerts"
+            yield f"data: {json.dumps({'status': f'checked {label} · phrasing'})}\n\n"
+            res = await asst.arun(plan, req.question, ps, snap.zones, snap.model_runs,
+                                  context.get_context, history)
         except HTTPException as e:
             yield f"data: {json.dumps({'error': e.detail})}\n\n"
             return
@@ -359,7 +332,7 @@ async def assistant_stream(req: AssistantRequest):
         # Word chunks that concatenate back to the exact answer.
         for chunk in re.findall(r"\S+\s*|\s+", answer):
             yield f"data: {json.dumps({'token': chunk})}\n\n"
-        yield f"data: {json.dumps({'done': True, 'model': res.get('model'), 'intent': res.get('intent'), 'zone_id': res.get('zone_id'), 'source': res.get('source')})}\n\n"
+        yield f"data: {json.dumps({'done': True, 'model': res.get('model'), 'intent': res.get('intent'), 'zone_id': res.get('zone_id'), 'source': res.get('source'), 'tools': res.get('tools')})}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")
 
@@ -388,11 +361,6 @@ async def metrics(region_id: str, event_id: int | None = None) -> list[Metrics]:
     _, snap = await active(event_id)
     return [Metrics(model=m["model_name"], version=m["version"], region_id=m["region_id"], metrics=m["metrics_json"])
             for m in snap.model_runs if m["region_id"] == region_id]
-
-
-class ChatMessage(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str
 
 
 class ChatRequest(BaseModel):
