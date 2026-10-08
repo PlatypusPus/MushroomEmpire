@@ -1,5 +1,5 @@
 import * as React from "react"
-import { BellRingIcon, LayoutDashboardIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
+import { BellRingIcon, LayoutDashboardIcon, ListOrderedIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
 
 import { useLiveContext, useReplayData } from "@/api/hooks"
 import { NavMain } from "@/components/nav-main"
@@ -25,6 +25,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const monitor = [
     { title: "Dashboard", url: "/dashboard", icon: <LayoutDashboardIcon /> },
+    { title: "Response priority", url: "/priority", icon: <ListOrderedIcon /> },
     {
       title: "Alerts", url: "/alerts", icon: <BellRingIcon />,
       // new alerts at the current replay step, else everything fired so far

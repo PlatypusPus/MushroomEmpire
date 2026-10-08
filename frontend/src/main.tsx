@@ -8,6 +8,7 @@ import Chat from "./pages/Chat";
 import Landing from "./pages/Landing";
 import Validation from "./pages/Validation";
 import Alerts from "./pages/Alerts";
+import Priority from "./pages/Priority";
 import LiveHazards from "./pages/LiveHazards";
 import "./index.css";
 
@@ -27,6 +28,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/chat" element={<Chat />} />
             <Route path="/validation" element={<Validation />} />
             <Route path="/honesty" element={<Navigate to="/validation" replace />} />
+            <Route path="/priority" element={<Priority />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/live" element={<LiveHazards />} />
             <Route path="*" element={<Navigate to="/" replace />} />

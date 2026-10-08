@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
-import { useReplayStore } from "@/state/replayStore"
+import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { api, type SnapshotQuery, type Weights } from "./client"
 
 /** Local-LLM briefing for the selected zone only; paused while the replay plays so the 3B model isn't flooded. */
@@ -20,8 +20,10 @@ export const STEP_H = 3 // replay frame every 3 h of the event
 
 /** Everything the replay pages share: ticks, zone names, the current tick's payloads and the alert feed.
  * React Query de-duplicates, so the dashboard, alerts page and sidebar badge all read the same requests. */
-export function useReplayData() {
-  const { eventId, tick, weights } = useReplayStore()
+export function useReplayData({ tunable = false }: { tunable?: boolean } = {}) {
+  // Only the Response priority page uses the slider weights; everywhere else ranks with the fixed defaults.
+  const { eventId, tick, weights: tuned } = useReplayStore()
+  const weights = tunable ? tuned : DEFAULT_WEIGHTS
   const regions = useRegions(eventId)
   const region = regions.data?.[0]
   const zones = useRegionZones(region?.id, eventId)

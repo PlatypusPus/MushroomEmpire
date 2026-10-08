@@ -1,13 +1,14 @@
 import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type TimeWindow, type ZonePayload } from "@/api/client"
 import { useZoneBriefing } from "@/api/hooks"
-import { useReplayStore } from "@/state/replayStore"
+import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const SHOWN_ASSETS = 12
 
-function Briefing({ zone }: { zone: ZonePayload }) {
-  const { eventId, playing, weights } = useReplayStore()
+function Briefing({ zone, tunable }: { zone: ZonePayload; tunable: boolean }) {
+  const { eventId, playing, weights: tuned } = useReplayStore()
+  const weights = tunable ? tuned : DEFAULT_WEIGHTS // same weights as the ranking shown beside it
   const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts, ...weights }, !playing)
   if (playing) return <div className="text-xs text-muted-foreground">Briefing pauses while the replay plays.</div>
   const duplicate = b.data?.source === "template" && b.data.text === zone.alert_text
@@ -54,7 +55,7 @@ function Window({ label, w }: { label: string; w: TimeWindow | null }) {
   )
 }
 
-export function ZonePanel({ zone, name }: { zone: ZonePayload | undefined; name: string | undefined }) {
+export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean }) {
   if (!zone) {
     return (
       <Card>
@@ -81,7 +82,7 @@ export function ZonePanel({ zone, name }: { zone: ZonePayload | undefined; name:
         <div className="rounded-md border-l-4 bg-muted/40 p-3 text-sm font-medium" style={{ borderColor: color }}>
           {zone.alert_text}
         </div>
-        <Briefing zone={zone} />
+        <Briefing zone={zone} tunable={tunable} />
         {!unknown && (
           <div className="grid grid-cols-2 gap-4">
             <div>
