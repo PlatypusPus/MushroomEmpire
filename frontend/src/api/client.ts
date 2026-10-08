@@ -64,6 +64,8 @@ export interface ZonePayload {
   alert_text: string
   model: string | null
   is_alert: boolean // probability >= the validated alert threshold
+  reasons: { theme: string; phrase: string; strength: "main reason" | "important" | "minor" | "standing factor" }[]
+  explanation: string | null // one plain sentence built from the reasons
 }
 
 export interface AlertEvent {
