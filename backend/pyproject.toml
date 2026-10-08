@@ -21,3 +21,6 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest", "httpx", "ruff"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

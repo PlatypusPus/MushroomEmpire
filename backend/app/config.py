@@ -3,8 +3,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env")
-    # SSH tunnel: ssh -L 5432:localhost:5432 core@acrossthe.cloud
-    database_url: str = "postgresql+asyncpg://coastguard:CHANGE_ME@localhost:5432/coastguard"
+    database_url: str = "postgresql+asyncpg://coastguard:CHANGE_ME@acrossthe.cloud:5432/coastguard"
+    default_event_id: int = 1  # event whose snapshot answers reads when none is given
 
 
 settings = Settings()

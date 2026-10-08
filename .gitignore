@@ -5,3 +5,7 @@ node_modules/
 dist/
 *.h5
 data/
+context/
+backend/cache/
+.pytest_cache/
+.ruff_cache/

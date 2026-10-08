@@ -59,7 +59,7 @@ Two machines, one repo.
 | Laptop | Everything else | FastAPI backend, React dev server, LightGBM, models. NVIDIA RTX 4050, 6 GB VRAM |
 
 Consequences:
-- Connect to the DB through an SSH tunnel: `ssh -L 5432:localhost:5432 core@acrossthe.cloud`, `DATABASE_URL` points at `localhost:5432`. Do not open the public port.
+- (decision, user, 2026-10-08) Postgres may be exposed publicly on `acrossthe.cloud:5432`, restricted to the `coastguard` role and database with password (scram-sha-256) auth. `DATABASE_URL` then points at `acrossthe.cloud:5432`. The SSH tunnel (`ssh -L 5432:localhost:5432 core@acrossthe.cloud`, `DATABASE_URL` at `localhost:5432`) stays as the fallback. Status 2026-10-08: role, database, pg_hba rule and ufw rule are in place, and `coastguard` login is verified through the tunnel. Direct public connect verified working from the laptop after the Hostinger panel firewall (`sceptix-base`) was turned off; ufw on the VPS (22, 80/443, 5432 only) is now the only firewall. `backend/.env` points at `acrossthe.cloud:5432`; no tunnel needed.
 - The tunnel is a live network dependency. The demo MUST run from a local replay cache (in-process store or SQLite snapshot) so a dropped tunnel cannot kill it. Hard requirement.
 - Dry-run the tunnel from the actual demo venue network. Outbound SSH may be blocked there and there is no fallback beyond the local snapshot.
 - Create a dedicated `coastguard` DB and role (not the `core` superuser). Whether `createuser` works without sudo is unverified. First Phase 1 test: the role authenticates through the tunnel.
@@ -148,6 +148,8 @@ Spatial joins run in the backend with GeoPandas. Scope is dozens of zones, so th
 | `ranking_runs` | id, event_id, issue_ts, weights_json, ranked_zone_ids_json |
 | `model_runs` | id, model_name, version, region_id, trained_on_event_ids, metrics_json |
 
+Actual schema (lane A, alembic revision `b6b514e3f0ab`, migrations not yet in the repo): differs from the table above. `dynamic_features` is per station (`station_id, ts, availability_ts, value, confidence, interpolated_value, is_simulated`), stations map to zones via `stations.zone_id` (var WATER/RAIN/GATE/PUMP); `zones` are 109 Census places with `county, area_km2, coverage_class, nearest_water_km, hand_depth_m`; `exposure_assets` are pre-joined to zones (`kind` includes police, fire_station; `confidence` confirmed/potential); extra tables `stations`, `flood_observations`. The backend reads this schema with plain SQL (`backend/app/store.py`), no ORM copy. Each WATER gauge's threshold is its q95 over train data only (ts before 2015-01-01). A zone's level is its worst gauge relative to that threshold. Output tables (`forecasts`, `risk_outputs`, `explanations`, `alerts`, `ranking_runs`) are not written yet: outputs are recomputed from the local snapshot cache `backend/cache/snapshot_{event}.json` (git-ignored), which makes reads work with the DB unreachable. As of 2026-10-08 `dynamic_features` holds only 5 stations, all RAIN, so every zone reads `insufficient_data` until lane A loads WATER series; a cached snapshot must be deleted to pick up new data.
+
 No users or auth table in v1. `is_simulated` is a real column carried events to forecasts to API to UI badge; it must not drop at any layer. Dynamic features are stored raw; the FeatureVector adds derived rolling sums (rain 6/24/72 h), `hand_m`, `slope`, `imperviousness`, `dist_drainage_m`, `is_holdout`, `is_simulated`. Do not double count tide and surge (use total water level or one of them).
 
 ## 9. Contracts and API (freeze first, change only by agreement)
@@ -190,6 +192,8 @@ Zone payload shape (proposed), what the frontend renders:
 ```
 
 DepthTrajectory shape (proposed): `{zone_id, issue_ts, model, is_simulated, steps:[{t, depth_m:{q10,q50,q90}}], drivers:[{feature, contribution}]}`.
+
+Backend status (2026-10-08, lane C): all routes above are live and read lane A's real schema, plus `GET /api/zones/{id}` (full ZonePayload in one call). Every read takes optional `event_id` (default `DEFAULT_EVENT_ID` in `.env`, 1) and `issue_ts` (default event start). `GET /api/ranking` takes weights as query params (`probability, severity, urgency, exposure, vulnerable, uncertainty`); `POST /api/ranking/weights` takes `{weights, issue_ts?, event_id?}` and is not persisted to `ranking_runs` yet. WS frames are `{issue_ts, zones:[ZonePayload]}`; query `interval_s`, `start`. Shapes live in `backend/app/schemas.py` (extra fields rejected). Contract changes vs the shape above: `probability` and `severity` are `null` only when coverage is `insufficient_data`; `onset`/`peak` are `null` when no episode is expected; added `model`; exposure `type` also allows `police` and `fire_station` (lane A data); `Zone` adds `county`, `coverage_class`. Alerts read "High Water Risk, ..." not "Flood" (section 12 item 1). Tests: `backend/tests/test_backend.py` on a synthetic, simulated-labelled snapshot (no DB).
 
 ## 10. Frontend
 
@@ -245,11 +249,12 @@ Reusable data sources:
 
 | Phase | Work | Gate (must pass locally, show evidence) |
 | --- | --- | --- |
-| 0. Contracts | Freeze section 9 shapes, commit mock JSON | Frontend renders a mock zone payload |
+| 0. Contracts | Freeze section 9 shapes, commit mock JSON | Frontend renders a mock zone payload. Backend side done 2026-10-08; the mock fixture was replaced by the real pipeline (section 9 status); frontend render still pending |
 | 1. Data and labels | Tunnel and role auth test; choose region and held-out event; decide real vs simulated labels; pull HAND, DEM, ERA5-Land, OSM; seed `regions`, `zones`, `events`; freeze holdout | Written note on where each label comes from; data loads in a notebook; tunnel auth works |
 | 2. Baseline model | Feature table, baseline, LightGBM, event-based split, metrics script, `model_runs` row | Metrics with misses and false alarms; leakage test passes |
 | 3. Map and exposure | Zone GeoJSON, HAND depth, `exposure_assets` via Overpass, `RiskMap`, `ExposurePanel` | Spot-check 3 zones against imagery or ground knowledge; asset counts plausible |
-| 4. Alerts, explain, rank | Agent chain wired in FastAPI; alert text, SHAP to words, ranked queue with sliders | Alert reads correctly; ranking reorders sensibly; Briefing number check rejects a bad number |
+| 4. Alerts, explain, rank | Agent chain wired in FastAPI; alert text, SHAP to words, ranked queue with sliders | Alert reads correctly; ranking reorders sensibly; Briefing number check rejects a bad number. Backend done 2026-10-08 (tests pass): agents in `backend/app/agents/`, orchestrator `backend/app/orchestrator.py`. Forecaster is the explicit persistence baseline (`persistence-baseline-v0`) until lane B's LightGBM plugs into `forecast(fv) -> DepthTrajectory` with SHAP as `drivers`; risk thresholds and probability tails are uncalibrated placeholders for lane B to fit on S_6 |
+| 5 (backend part) | Replay engine `backend/app/replay/`, `/ws/replay`, snapshot cache | Done 2026-10-08 in tests; offline run with the DB blocked not yet rehearsed |
 | 5. Replay and dashboard | `replay/` engine, `/ws/replay`, `TimeSlider`, local cache export | Full flow runs with the tunnel closed and network blocked |
 | 6. Demo hardening | Two timed rehearsals, screen-recorded backup, simulated-badge audit on every component, venue tunnel dry run | Two clean runs; recording saved |
 | 7. Extras | CASPIAN transfer view, GDELT panel, destination search | Each behind its own route, visibly separate from the validated core |
@@ -318,6 +323,7 @@ Fewer people: merge A with B, or C with D. Never merge B with C. Critical path: 
 - Keep secrets out of the repo; use environment variables.
 - Python: always use uv (`uv add`, `uv sync`, `uv run`). Do not call `pip`, `python -m venv` or bare `python` for project code. Run from `backend/`, for example `uv run uvicorn app.main:app --reload` and `uv run pytest`.
 - Frontend: `npm` in `frontend/` (`npm install`, `npm run dev`); Vite proxies `/api` and `/ws` to `localhost:8000`.
+- `.claude/launch.json` defines `backend` (port 8000) and `frontend` (port 5173) launch configs for coding agents.
 - Prefer small runnable steps over large rewrites. Do not download anything over 1 GB or install system packages without asking.
 - Do not use em dashes in written output or docs.
 
@@ -331,8 +337,10 @@ Fewer people: merge A with B, or C with D. Never merge B with C. Critical path: 
 5. Demo tick cadence (section 15, item 3)?
 6. LLM provider and key for the Briefing agent? Answered: none yet, build template-only briefing (same output format) and add an LLM behind it later.
 7. Team size, which decides how lanes merge? Answered: 3 to 4 people, one lane each (section 17).
-8. Does the `coastguard` role authenticate through the tunnel (`pg_hba.conf` unread)?
+8. Does the `coastguard` role authenticate through the tunnel? Resolved: yes, verified 2026-10-08 (PostgreSQL 16.15).
 9. Is a no-auth, single-tenant demo acceptable for the audience?
+11. Lane A: push the alembic migrations for revision `b6b514e3f0ab`, and load WATER series into `dynamic_features` (only 5 RAIN stations so far). Units of `value` (stage likely in ft) also decide whether the trajectory field named `depth_m` is really metres; until confirmed it carries SF2Bench units above threshold.
+12. Default replay event: `DEFAULT_EVENT_ID=1` (2020 May Memorial Day rain) is a placeholder; section 20 item 2a's April 2023 event is not in the `events` table.
 10. Verify the SF2Bench licence, units and datum. Specifically RAIN looks too small to be inches: yearly gauge totals are about 4 to 12 in file units against roughly 60 in a typical Miami-Dade/Broward year, so the unit or aggregation (for example a mean rather than a sum) is unknown. Do not print any rainfall number such as "85 mm" until this is resolved. Also and decide whether to add NOAA tide or surge data. Open.
 
 Reference note from the Kerala run: GFF had 8 India-only near-coastal tiles within 50 km in our measurement (notes said 9); both Kerala tiles had GFF `flooding=False`. Not used further.
