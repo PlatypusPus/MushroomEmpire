@@ -158,6 +158,39 @@ async def zone_briefing(zone_id: str, issue_ts: datetime | None = None, event_id
     return _briefs[key]
 
 
+@router.get("/pipeline")
+async def pipeline_status(issue_ts: datetime | None = None, event_id: int | None = None) -> dict:
+    """Run one tick through the LangGraph pipeline and report how it went: per-agent timing, failed zones, and the graph."""
+    from time import perf_counter
+
+    from app import pipeline
+
+    eid, snap = await active(event_id)
+    ts = issue_ts or snap.event["start_ts"]
+    t = perf_counter()
+    r = await asyncio.to_thread(pipeline.run_tick_traced, snap, ts)
+    return {"event_id": eid, "issue_ts": ts, "zones": len(r.payloads), "forecast": sum(p.probability is not None for p in r.payloads),
+            "insufficient_data": sum(p.probability is None for p in r.payloads), "failed": r.errors,
+            "agents": pipeline.summarize(r.trace), "total_ms": round((perf_counter() - t) * 1000), "graph_mermaid": pipeline.diagram()}
+
+
+@router.get("/tick/stream")
+async def tick_stream(issue_ts: datetime | None = None, event_id: int | None = None):
+    """SSE progress of one tick: {"event":"zone",done,total,...} per zone, {"event":"ranked"}, then {"event":"done","payloads":[...]}."""
+    from app import pipeline
+
+    eid, snap = await active(event_id)
+    ts = issue_ts or snap.event["start_ts"]
+
+    async def events():
+        async for e in pipeline.astream_tick(snap, ts):
+            if e["event"] == "done":
+                e = {"event": "done", "payloads": [p.model_dump(mode="json") for p in e["payloads"]]}
+            yield f"data: {json.dumps(e, default=str)}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream")
+
+
 @router.get("/ranking")
 async def ranking(
     weights: Annotated[Weights, Depends()], issue_ts: datetime | None = None, event_id: int | None = None
