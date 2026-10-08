@@ -5,9 +5,7 @@ Template today; an LLM can replace `render` later, but `check_numbers` still gat
 
 import re
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
-from app.config import settings
 from app.schemas import RiskOutput
 
 NUM = re.compile(r"\d+(?:[.:]\d+)?")
@@ -16,8 +14,8 @@ NOUN = "Water"
 
 
 def clock(t: datetime) -> str:
-    """Wall-clock time where the responders are (DB timestamps are UTC)."""
-    return t.astimezone(ZoneInfo(settings.local_tz)).strftime("%I:%M %p").lstrip("0")
+    """Stored wall clock, unconverted: SF2Bench timezone is unknown (ROOT_CONTEXT 20.2f)."""
+    return t.strftime("%I:%M %p").lstrip("0")
 
 
 def render(zone_name: str, risk: RiskOutput, drivers: list[str]) -> str:
