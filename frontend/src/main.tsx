@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
+import Honesty from "./pages/Honesty";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -20,6 +21,7 @@ createRoot(document.getElementById("root")!).render(
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/honesty" element={<Honesty />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

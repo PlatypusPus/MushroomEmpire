@@ -12,6 +12,7 @@ from app import replay
 from app.config import settings
 from app.llm.client import LLMUnavailable, chat as llm_chat, chat_stream as llm_chat_stream
 from app.schemas import Event, ExposureItem, Metrics, Region, Weights, Zone, ZonePayload
+from app.store import cached_events
 
 router = APIRouter()
 ws_router = APIRouter()
@@ -69,8 +70,8 @@ async def events() -> list[Event]:
             res = await s.execute(text("select id, region_id::text as region_id, name, start_ts, end_ts, "
                                        "is_simulated, is_holdout, source from events order by start_ts"))
             return [Event(**dict(r._mapping)) for r in res]
-    except OSError:  # DB unreachable: fall back to whatever is cached locally
-        return [Event(**s.event) for s in replay._snaps.values()]
+    except Exception:  # DB unreachable (any driver error): list the storms cached on disk, so the picker works offline
+        return [Event(**e) for e in cached_events()]
 
 
 class ReplayStart(BaseModel):

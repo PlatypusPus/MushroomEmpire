@@ -58,6 +58,16 @@ class Snapshot:
         return cls(**json.loads(path.read_text(), object_hook=hook))
 
 
+def cached_events() -> list[dict]:
+    """Events that have a local snapshot (scripts/precache.py), sorted by start: the offline event list."""
+    out = []
+    for path in sorted(CACHE_DIR.glob("snapshot_*.json")):
+        ev = json.loads(path.read_text())["event"]
+        ev["start_ts"], ev["end_ts"] = datetime.fromisoformat(ev["start_ts"]), datetime.fromisoformat(ev["end_ts"])
+        out.append(ev)
+    return sorted(out, key=lambda e: e["start_ts"])
+
+
 SQL = {
     "event": "select id, region_id, name, start_ts, end_ts, is_simulated, is_holdout, source from events where id = :e",
     "regions": "select id::text as id, name, kind, coverage_label as coverage, false as is_simulated from regions where id = :r",

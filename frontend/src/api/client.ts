@@ -90,7 +90,40 @@ export interface Metrics {
   model: string
   version: string
   region_id: string
-  metrics: Record<string, number>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metrics: Record<string, any> // nested: by_lead, validation, peak_eval, review, ... (see Lane B's model_runs row)
+}
+
+export interface LiveAlert {
+  event: string
+  level: number
+  severity: string
+  certainty: string
+  effective: string
+  ends: string | null
+  headline: string
+}
+export interface LiveCyclone {
+  id: string
+  name: string
+  classification: string
+  intensity_kt: number | null
+  distance_km: number | null
+  heading_toward_region: boolean | null
+}
+export interface LiveContext {
+  live: boolean
+  note: string
+  fetched_at: string
+  level: number
+  label: string
+  heuristic_note: string
+  alerts: Record<string, LiveAlert[]>
+  cyclones: LiveCyclone[]
+  forecast: { source: string; rain_next_24h_mm?: number; rain_next_72h_mm?: number; max_gust_next_48h_kmh?: number } | null
+  bulletins: { title: string; published: string; link: string }[]
+  sources: Record<string, { ok: boolean; usable: boolean; age_s: number | null; error: string | null }>
+  partial: string[]
 }
 
 export interface ChatMessage {
@@ -196,6 +229,7 @@ export const api = {
       `/replay/${event_id}/start${params({ step_h })}`,
       { method: "POST" }
     ),
+  context: () => apiFetch<LiveContext>("/context"),
   metrics: (region_id: string, event_id?: number) =>
     apiFetch<Metrics[]>(`/models/${region_id}/metrics${params({ event_id })}`),
   chat: (messages: ChatMessage[], system?: string) =>
