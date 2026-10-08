@@ -191,6 +191,25 @@ async def tick_stream(issue_ts: datetime | None = None, event_id: int | None = N
     return StreamingResponse(events(), media_type="text/event-stream")
 
 
+class AssistantRequest(BaseModel):
+    question: str
+    zone_id: str | None = None  # the zone currently selected in the UI, used when the question names none
+    issue_ts: datetime | None = None
+    event_id: int | None = None
+
+
+@router.post("/assistant")
+async def assistant(req: AssistantRequest) -> dict:
+    """Grounded Q&A: routed to the agents' outputs, phrased by the local model, number-checked, template fallback (`source` says which)."""
+    from app import assistant as asst
+
+    if not req.question.strip():
+        raise HTTPException(422, "question must not be empty")
+    eid, snap = await active(req.event_id)
+    ps = list(await payloads(eid, req.issue_ts))
+    return await asst.ask(req.question, ps, snap.zones, snap.model_runs, req.zone_id)
+
+
 @router.get("/ranking")
 async def ranking(
     weights: Annotated[Weights, Depends()], issue_ts: datetime | None = None, event_id: int | None = None

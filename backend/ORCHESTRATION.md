@@ -78,3 +78,29 @@ graph TD;
 Mean per call: forecasting 102 ms, risk+peak 133 ms, ingestion 1.1 ms, exposure 0.2 ms, explainability 0.04 ms (timings include thread
 waits). Ticks are memoised by the replay engine, so scrubbing re-reads. Batching the LightGBM predictions across zones would be the
 next speed-up if live ticks need to be faster.
+
+## Grounded assistant (`app/assistant.py`, `POST /api/assistant`)
+
+A LangChain (LCEL) chain that connects questions to the agents' outputs: `RunnablePassthrough.assign(route) | assign(facts via RunnableBranch) | compose`.
+
+```mermaid
+graph LR
+  Q[question + selected zone] --> R[route: rules, no LLM]
+  R -->|zone / why| Z[briefing_input of the zone]
+  R -->|exposure| E[exposure counts + hospitals]
+  R -->|top| T[ranked zones]
+  R -->|model| M[stored validation facts]
+  R -->|help| H[fixed help text]
+  Z --> C[compose: local LLM phrases the facts]
+  E --> C
+  T --> C
+  M --> C
+  C --> G{guard: numbers in facts, no forbidden words, no contradiction}
+  G -->|pass| A[LLM answer]
+  G -->|fail or LLM down| X[deterministic template from the same facts]
+```
+
+* The model sees only the small `facts` JSON, never raw data, and may not compute. Every number in its text must occur in the facts.
+* An insufficient-data zone never reaches the model (it could call it low risk); a ranking answer that calls an unknown zone "low risk" is rejected.
+* `source` is `llm` or `template`; `reason` says why a draft was rejected. Intent routing is rule-based because a 3B model routes unreliably.
+* Tested with a fake model (routing, grounded accept, invented-number / forbidden-word / contradiction fallback, LLM down, endpoint). Not yet run against a live Ollama model.
