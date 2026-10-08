@@ -11,7 +11,7 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 h-4 data-vertical:self-auto"
         />
-        <h1 className="text-base font-medium">CoastGuard AI · South Florida high-water replay</h1>
+        <h1 className="text-base font-medium">KADAL · South Florida high-water replay</h1>
         <div className="ml-auto">
           <ModeToggle />
         </div>
