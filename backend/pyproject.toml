@@ -15,6 +15,7 @@ dependencies = [
   "geopandas",
   "shapely",
   "rasterio",
+  "scikit-learn>=1.9.1",
 ]
 # ponytail: tensorflow (CASPIAN) added only if the Phase 7 gate passes
 
