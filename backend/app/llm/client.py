@@ -1,6 +1,6 @@
 """LLM client: LiteLLM is the only seam between the app and any model.
 
-The model is chosen in .env (LLM_MODEL, e.g. "ollama/qwen3:4b"); swapping
+The model is chosen in .env (LLM_MODEL, e.g. "ollama/qwen2.5:3b"); swapping
 providers later is a config change, not a code change. Nothing here computes
 flood numbers: the LLM narrates text given to it, and numeric grounding
 (check_numbers in briefing) stays mandatory wherever numbers appear.

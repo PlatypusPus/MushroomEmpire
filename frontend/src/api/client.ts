@@ -173,6 +173,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ weights, ...q }),
     }),
+  zoneBriefing: (zone_id: string, q: SnapshotQuery = {}) =>
+    apiFetch<{ zone_id: string; text: string; source: "llm" | "template"; model: string | null; reason: string | null }>(
+      `/zones/${zone_id}/briefing${params({ ...q })}`
+    ),
   replayStart: (event_id: number, step_h: number) =>
     apiFetch<{ session_id: string; event_id: number; ticks: string[] }>(
       `/replay/${event_id}/start${params({ step_h })}`,
