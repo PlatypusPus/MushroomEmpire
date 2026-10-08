@@ -1,7 +1,9 @@
 """Accounts: Google sign-in, zone subscriptions, alert emails.
 
-* Sign-in: the browser gets a Google ID token (Google Identity Services); POST /auth/google verifies it server-side
-  (signature, audience = GOOGLE_CLIENT_ID, email_verified) and returns our own short-lived JWT. No passwords are stored.
+* Sign-in and sign-up are one flow: Google OAuth 2.0 authorization code + PKCE. /auth/google/start redirects to Google,
+  /auth/google/callback exchanges the code server-side (client secret never reaches the browser), verifies the ID token
+  (signature, audience, email_verified), creates the user on first sign-in, and hands the browser our own short-lived JWT.
+  No passwords are stored.
 * Alerts, two kinds, always labelled so a replay is never mistaken for a live warning:
     replay: a zone the user follows crossed the validated alert threshold in a (historical, simulated) replay session
     live:   an official NWS/NHC watch or warning is active for the county of a zone the user follows (not from the model)
@@ -9,15 +11,21 @@
 * No SMTP configured: the mail is written to backend/outbox/ and recorded as status "outbox".
 """
 import asyncio
+import base64
+import hashlib
 import logging
+import secrets
 import smtplib
+from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Annotated
 
+import httpx
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -33,7 +41,7 @@ MIN_LIVE_LEVEL = 2  # official watch or warning (levels: 1 advisory, 2 watch, 3 
 
 
 def enabled() -> bool:
-    return bool(settings.jwt_secret and settings.google_client_id)
+    return bool(settings.jwt_secret and settings.google_client_id and settings.google_client_secret)
 
 
 # ------------------------------------------------------------------ sessions
@@ -79,10 +87,6 @@ async def _zone_ids(db, uid: int) -> list[str]:
     return sorted((await db.execute(select(Subscription.zone_id).where(Subscription.user_id == uid))).scalars())
 
 
-class GoogleLogin(BaseModel):
-    credential: str = Field(min_length=20, max_length=4096)
-
-
 class ZoneList(BaseModel):
     zone_ids: list[str] = Field(max_length=120)
 
@@ -91,32 +95,83 @@ class Prefs(BaseModel):
     email_alerts: bool
 
 
+GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN = "https://oauth2.googleapis.com/token"
+TX_COOKIE = "kadal_oauth"
+
+
+def _redirect_uri() -> str:
+    return f"{settings.app_origin.rstrip('/')}/api/auth/google/callback"
+
+
+def _back(path: str) -> RedirectResponse:
+    r = RedirectResponse(f"{settings.app_origin.rstrip('/')}{path}", status_code=302)
+    r.delete_cookie(TX_COOKIE, path="/api/auth/google")
+    return r
+
+
 @router.get("/auth/config")
 async def auth_config() -> dict:
-    """What the sign-in page needs. google_client_id is public by design; enabled=false hides the button."""
-    return {"enabled": enabled(), "google_client_id": settings.google_client_id if enabled() else ""}
+    """What the sign-in page needs. enabled=false hides the button."""
+    return {"enabled": enabled(), "login_url": "/api/auth/google/start" if enabled() else ""}
 
 
-@router.post("/auth/google")
-async def auth_google(req: GoogleLogin) -> dict:
+@router.get("/auth/google/start")
+async def google_start() -> RedirectResponse:
     if not enabled():
         raise HTTPException(503, "accounts are not configured")
-    try:
-        info = await asyncio.to_thread(verify_google, req.credential)
-    except Exception as e:  # bad signature, wrong audience, expired, unverified email, network
-        log.info("google sign-in rejected: %s", e)
-        raise HTTPException(401, "Google sign-in could not be verified")
+    state, verifier = secrets.token_urlsafe(24), secrets.token_urlsafe(48)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    q = urlencode({"client_id": settings.google_client_id, "redirect_uri": _redirect_uri(), "response_type": "code", "scope": "openid email profile",
+                   "state": state, "code_challenge": challenge, "code_challenge_method": "S256", "prompt": "select_account"})
+    r = RedirectResponse(f"{GOOGLE_AUTH}?{q}", status_code=302)
+    # state + PKCE verifier travel in a short-lived signed HttpOnly cookie, so no server-side session store is needed
+    tx = jwt.encode({"s": state, "v": verifier, "exp": datetime.now(timezone.utc) + timedelta(minutes=10)}, settings.jwt_secret, algorithm="HS256")
+    r.set_cookie(TX_COOKIE, tx, max_age=600, httponly=True, samesite="lax", secure=settings.app_origin.startswith("https"), path="/api/auth/google")
+    return r
+
+
+async def exchange_code(code: str, verifier: str) -> str:
+    async with httpx.AsyncClient(timeout=15) as c:
+        r = await c.post(GOOGLE_TOKEN, data={"grant_type": "authorization_code", "code": code, "code_verifier": verifier, "redirect_uri": _redirect_uri(),
+                                             "client_id": settings.google_client_id, "client_secret": settings.google_client_secret})
+    r.raise_for_status()
+    return r.json()["id_token"]
+
+
+async def login_user(info: dict) -> tuple[User, bool]:
+    """Sign in, or sign up on first use. Returns (user, created)."""
     async with SessionLocal() as db:
         user = (await db.execute(select(User).where(User.google_sub == info["sub"]))).scalar_one_or_none()
-        if user is None:
-            user = User(google_sub=info["sub"], email=info["email"].lower(), name=(info.get("name") or "")[:120],
-                        email_alerts=True, created_at=datetime.now(timezone.utc))
-            db.add(user)
-            try:
-                await db.commit()
-            except IntegrityError:  # same email already registered under another Google subject: refuse to merge accounts silently
-                raise HTTPException(409, "this email is already registered")
-        return {"token": issue_token(user.id), "user": _user_json(user, await _zone_ids(db, user.id))}
+        if user is not None:
+            return user, False
+        user = User(google_sub=info["sub"], email=info["email"].lower(), name=(info.get("name") or "")[:120], email_alerts=True,
+                    created_at=datetime.now(timezone.utc))
+        db.add(user)
+        try:
+            await db.commit()
+        except IntegrityError:  # same email under another Google subject: never merge accounts silently
+            raise ValueError("this email is already registered")
+        return user, True
+
+
+@router.get("/auth/google/callback")
+async def google_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None) -> RedirectResponse:
+    if not enabled():
+        raise HTTPException(503, "accounts are not configured")
+    if error or not code or not state:  # user pressed cancel, or a forged hit on this URL
+        return _back("/account?error=cancelled")
+    try:
+        tx = jwt.decode(request.cookies.get(TX_COOKIE, ""), settings.jwt_secret, algorithms=["HS256"])
+        if not secrets.compare_digest(tx["s"], state):
+            raise ValueError("state mismatch")  # CSRF: the response does not belong to a flow this browser started
+        info = await asyncio.to_thread(verify_google, await exchange_code(code, tx["v"]))
+        user, created = await login_user(info)
+    except Exception as e:
+        log.info("google sign-in rejected: %s", type(e).__name__)
+        return _back("/account?error=signin_failed")
+    # fragment, not query: it is never sent to any server or logged; the page moves it to storage and clears it
+    return _back(f"/account#token={issue_token(user.id)}&new={int(created)}")
 
 
 @router.get("/me")

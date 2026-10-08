@@ -22,8 +22,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const account = {
-  config: () => call<{ enabled: boolean; google_client_id: string }>("/auth/config"),
-  google: (credential: string) => call<{ token: string; user: Me }>("/auth/google", { method: "POST", body: JSON.stringify({ credential }) }),
+  config: () => call<{ enabled: boolean; login_url: string }>("/auth/config"),
   me: () => call<Me>("/me"),
   setZones: (zone_ids: string[]) => call<{ zone_ids: string[] }>("/me/zones", { method: "PUT", body: JSON.stringify({ zone_ids }) }),
   setPrefs: (email_alerts: boolean) => call<{ email_alerts: boolean }>("/me/prefs", { method: "PUT", body: JSON.stringify({ email_alerts }) }),

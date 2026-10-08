@@ -1,5 +1,5 @@
 // Account: Google sign-in, choose the places you follow, see the alerts we sent. Replay alerts are labelled simulated in the email and here.
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { account, token, type Me } from "@/api/account"
 import { useRegionZones } from "@/api/hooks"
@@ -12,51 +12,29 @@ import { Input } from "@/components/ui/input"
 
 const REGION_ID = "1"
 
-declare global {
-  interface Window { google?: { accounts: { id: { initialize: (c: object) => void; renderButton: (el: HTMLElement, o: object) => void } } } }
+const ERRORS: Record<string, string> = {
+  signin_failed: "Google sign-in could not be verified. Please try again.",
+  cancelled: "Sign-in was cancelled.",
 }
 
-function GoogleButton({ clientId, onCredential }: { clientId: string; onCredential: (c: string) => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const render = () => {
-      if (!window.google || !ref.current) return
-      window.google.accounts.id.initialize({ client_id: clientId, callback: (r: { credential: string }) => onCredential(r.credential) })
-      window.google.accounts.id.renderButton(ref.current, { theme: "filled_black", size: "large", shape: "pill", text: "continue_with" })
-    }
-    if (window.google) return render()
-    const s = document.createElement("script")
-    s.src = "https://accounts.google.com/gsi/client"
-    s.async = true
-    s.onload = render
-    document.head.appendChild(s)
-  }, [clientId, onCredential])
-  return <div ref={ref} />
-}
-
-function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
+function SignIn({ error }: { error: string | null }) {
   const cfg = useQuery({ queryKey: ["auth-config"], queryFn: account.config, retry: 1 })
-  const [err, setErr] = useState<string | null>(null)
-  const login = async (credential: string) => {
-    try {
-      token.set((await account.google(credential)).token)
-      onSignedIn()
-    } catch {
-      setErr("Google sign-in could not be verified. Try again.")
-    }
-  }
   return (
     <Card className="max-w-md">
       <CardHeader>
         <CardTitle>Get flood alerts by email</CardTitle>
-        <CardDescription>Sign in with Google, pick the places you care about, and we email you when they cross the alert threshold or an official warning is issued.</CardDescription>
+        <CardDescription>Continue with Google to sign in or create an account. Pick the places you care about and we email you when they cross the alert threshold or an official warning is issued.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {cfg.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {cfg.isError && <p className="text-sm text-destructive">Could not reach the API.</p>}
-        {cfg.data && !cfg.data.enabled && <p className="text-sm text-muted-foreground">Accounts are not configured on this server (set GOOGLE_CLIENT_ID and JWT_SECRET).</p>}
-        {cfg.data?.enabled && <GoogleButton clientId={cfg.data.google_client_id} onCredential={login} />}
-        {err && <p className="text-sm text-destructive">{err}</p>}
+        {cfg.data && !cfg.data.enabled && <p className="text-sm text-muted-foreground">Accounts are not configured on this server (set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and JWT_SECRET).</p>}
+        {cfg.data?.enabled && (
+          <Button render={<a href={cfg.data.login_url} />} size="lg">
+            Continue with Google
+          </Button>
+        )}
+        {error && <p className="text-sm text-destructive">{ERRORS[error] ?? "Sign-in failed."}</p>}
       </CardContent>
     </Card>
   )
@@ -130,8 +108,19 @@ function Inbox() {
   )
 }
 
+// Returning from Google: the backend put our token in the URL fragment (never sent to a server). Move it to storage and clear the URL.
+function takeCallback(): { error: string | null; isNew: boolean } {
+  const f = new URLSearchParams(window.location.hash.slice(1))
+  const t = f.get("token")
+  const error = new URLSearchParams(window.location.search).get("error")
+  if (t) token.set(t)
+  if (t || error) window.history.replaceState(null, "", window.location.pathname)
+  return { error, isNew: f.get("new") === "1" }
+}
+
 export default function Account() {
   const qc = useQueryClient()
+  const [cb] = useState(takeCallback)
   const [signedIn, setSignedIn] = useState(() => token.get() != null)
   const me = useQuery({ queryKey: ["me"], queryFn: account.me, enabled: signedIn, retry: false })
   useEffect(() => { if (me.isError) setSignedIn(false) }, [me.isError])
@@ -143,9 +132,12 @@ export default function Account() {
     <AppShell>
       <div className="flex flex-col gap-4 p-4 md:p-6">
         {!signedIn || !me.data ? (
-          signedIn ? <p className="text-sm text-muted-foreground">Loading…</p> : <SignIn onSignedIn={() => { setSignedIn(true); qc.invalidateQueries({ queryKey: ["me"] }) }} />
+          signedIn ? <p className="text-sm text-muted-foreground">Loading…</p> : <SignIn error={cb.error} />
         ) : (
           <>
+            {cb.isNew && me.data.zone_ids.length === 0 && (
+              <p className="rounded border p-3 text-sm">Welcome! Your account is ready. Choose the places you want alerts for below.</p>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle>{me.data.name || me.data.email}</CardTitle>

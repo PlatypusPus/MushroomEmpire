@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     llm_brief_model: str = "ollama/qwen2.5:3b"  # constrained paraphrase: non-thinking model (qwen3 thinks in a
     # separate field and burns small token budgets on reasoning, leaving empty content)
 
-    # Accounts. Google ID-token sign-in needs only the (public) OAuth client id; jwt_secret signs our own session token.
+    # Accounts: Google OAuth 2.0 authorization-code flow with PKCE. jwt_secret signs our own session token.
     google_client_id: str = ""
+    google_client_secret: str = ""  # confidential: only ever used server-side in the code exchange
+    # Origin the BROWSER uses (the Vite dev server proxies /api to the backend). Google redirects back to <this>/api/auth/google/callback.
+    app_origin: str = "http://localhost:5173"
     jwt_secret: str = ""  # required to enable accounts; generate with: python -c "import secrets;print(secrets.token_urlsafe(48))"
     jwt_ttl_h: int = 24 * 7
     # Alert email. With no smtp_host, mails are written to backend/outbox/ instead (still recorded as delivered=outbox).
