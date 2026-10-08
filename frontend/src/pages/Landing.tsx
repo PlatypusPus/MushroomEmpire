@@ -16,7 +16,7 @@ export default function Landing() {
         <span key={i} className="absolute rounded-full bg-white" style={{ left: s.left, top: s.top, width: s.size, height: s.size, opacity: s.opacity }} />
       ))}
 
-      <SpinningGlobe className="absolute left-[34%] top-1/2 h-[120vh] w-[170vh] -translate-x-1/2 -translate-y-1/2" />
+      <SpinningGlobe className="absolute left-[27%] top-1/2 h-[120vh] w-[170vh] -translate-x-1/2 -translate-y-1/2" />
 
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#02050c]/70" />
 
