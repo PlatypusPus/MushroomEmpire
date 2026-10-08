@@ -26,12 +26,10 @@ export default function Priority() {
         {error && (
           <div className="mx-4 rounded-md border border-destructive p-3 text-sm text-destructive lg:mx-6">Backend error: {String(error)}</div>
         )}
-        <div className="px-4 lg:px-6">
-          <TimeSlider ticks={ticks} events={events.data ?? []} />
-        </div>
-        <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[3fr_2fr]">
+        <div className="grid grid-cols-1 items-start gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[3fr_2fr]">
           <div className="flex flex-col gap-4">
             <RiskMap zones={zones} payloads={rows} />
+            <TimeSlider ticks={ticks} events={events.data ?? []} />
             <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} tunable />
           </div>
           <RankingQueue payloads={rows} names={names} />

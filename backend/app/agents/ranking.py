@@ -5,7 +5,7 @@ from app.schemas import ExposureItem, RiskOutput, Weights
 SEVERITY_SCORE = {"low": 0.0, "moderate": 0.33, "high": 0.67, "severe": 1.0}
 LABELS = {
     "probability": "high probability",
-    "severity": "severe expected level",
+    "severity": "expected severity",  # neutral wording: the zone's actual class (moderate, severe) is shown beside it
     "urgency": "early onset",
     "exposure": "many exposed assets",
     "vulnerable": "hospital or shelter in zone",

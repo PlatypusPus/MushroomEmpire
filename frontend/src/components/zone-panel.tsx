@@ -1,56 +1,89 @@
-import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type TimeWindow, type ZonePayload } from "@/api/client"
+import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type TimeWindow, type ZonePayload } from "@/api/client"
 import { useZoneBriefing } from "@/api/hooks"
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-const SHOWN_ASSETS = 12
+const TYPE_LABEL: Record<string, string> = {
+  hospital: "Hospitals", fire_station: "Fire stations", police: "Police", shelter: "Potential shelters",
+  road: "Roads", building: "Buildings",
+}
+const TYPE_ORDER = ["hospital", "fire_station", "police", "shelter", "road", "building"]
+const NAMED = 5
 
-function Briefing({ zone, tunable }: { zone: ZonePayload; tunable: boolean }) {
+/** One sentence for the zone: the number-checked AI briefing when it adds something, else the alert itself. */
+function Summary({ zone, tunable, color }: { zone: ZonePayload; tunable: boolean; color: string }) {
   const { eventId, playing, weights: tuned } = useReplayStore()
   const weights = tunable ? tuned : DEFAULT_WEIGHTS // same weights as the ranking shown beside it
   const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts, ...weights }, !playing)
-  if (playing) return <div className="text-xs text-muted-foreground">Briefing pauses while the replay plays.</div>
-  const duplicate = b.data?.source === "template" && b.data.text === zone.alert_text
+  const ai = b.data?.source === "llm" ? b.data : null
   return (
-    <div>
-      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-        Briefing
-        {b.data && (
-          <Badge variant="outline">{b.data.source === "llm" ? `AI · ${b.data.model?.replace("ollama/", "")} · number-checked` : "template"}</Badge>
-        )}
-      </div>
-      {duplicate ? (
-        <p className="text-xs text-muted-foreground">
-          Deterministic wording (same as above — the model added nothing{b.data?.reason ? `: ${b.data.reason}` : ""}).
-        </p>
-      ) : (
-        <>
-          <p className="text-sm">{b.isFetching && !b.data ? "Writing briefing with the local model..." : b.data?.text}</p>
-          {b.data?.source === "template" && b.data?.reason && (
-            <p className="mt-1 text-[11px] text-muted-foreground">Fallback: {b.data.reason}</p>
-          )}
-        </>
-      )}
+    <div className="rounded-md border-l-4 bg-muted/40 p-3" style={{ borderColor: color }}>
+      <p className="text-sm leading-relaxed">{ai ? ai.text : zone.alert_text}</p>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">
+        {playing
+          ? "Alert text · AI briefing pauses while the replay plays"
+          : ai
+            ? `AI briefing · ${ai.model?.replace("ollama/", "")} · every number checked against the data`
+            : b.isFetching
+              ? "Alert text · writing an AI briefing..."
+              : "Alert text"}
+      </p>
     </div>
   )
 }
 
-function Window({ label, w }: { label: string; w: TimeWindow | null }) {
+function Stat({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      {w ? (
-        <div className="tabular-nums">
-          <span className="text-lg font-semibold">{clock(w.likely)}</span>
-          <span className="ml-2 text-xs text-muted-foreground">
-            window {clock(w.earliest, w.earliest.slice(0, 10) !== w.likely.slice(0, 10))} to{" "}
-            {clock(w.latest, w.latest.slice(0, 10) !== w.likely.slice(0, 10))}
-          </span>
+    <div className="min-w-0">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="truncate text-base font-semibold capitalize tabular-nums" style={color ? { color } : undefined}>{value}</div>
+      {sub && <div className="truncate text-[11px] text-muted-foreground tabular-nums">{sub}</div>}
+    </div>
+  )
+}
+
+function windowSub(w: TimeWindow | null) {
+  if (!w) return undefined
+  const day = (t: string) => t.slice(0, 10) !== w.likely.slice(0, 10)
+  return `${clock(w.earliest, day(w.earliest))} to ${clock(w.latest, day(w.latest))}`
+}
+
+function Facilities({ items }: { items: ExposureItem[] }) {
+  if (!items.length) return <p className="text-sm text-muted-foreground">No mapped facilities in this zone.</p>
+  const byType = TYPE_ORDER.map((t) => ({ t, list: items.filter((a) => a.type === t) })).filter((g) => g.list.length)
+  const hospitals = items.filter((a) => a.type === "hospital")
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2">
+        {byType.map(({ t, list }) => (
+          <div key={t} className="rounded-md border px-2.5 py-1.5">
+            <div className="text-base font-semibold tabular-nums">{list.length}</div>
+            <div className="text-[11px] text-muted-foreground">{TYPE_LABEL[t] ?? t}</div>
+          </div>
+        ))}
+      </div>
+      {hospitals.length > 0 && (
+        <div>
+          <div className="mb-1 text-[11px] text-muted-foreground">Hospitals</div>
+          <ul className="text-sm">
+            {hospitals.slice(0, NAMED).map((a, i) => <li key={i} className="truncate">{a.name}</li>)}
+          </ul>
         </div>
-      ) : (
-        <div className="text-sm text-muted-foreground">none expected</div>
       )}
+      <details className="text-sm">
+        <summary className="cursor-pointer text-[11px] text-muted-foreground">Show all {items.length}</summary>
+        <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto pr-1">
+          {items.map((a, i) => (
+            <li key={i} className="flex justify-between gap-2">
+              <span className="truncate">{a.name}</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">{a.status === "confirmed" ? "confirmed" : "potential"}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+      <p className="text-[11px] text-muted-foreground">Locations from OpenStreetMap. Shelters are schools and community centres, so only potential.</p>
     </div>
   )
 }
@@ -61,7 +94,7 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
       <Card>
         <CardHeader>
           <CardTitle>Zone details</CardTitle>
-          <CardDescription>Click a zone on the map or in the priority queue.</CardDescription>
+          <CardDescription>Click a zone on the map to see its forecast, reasons and facilities.</CardDescription>
         </CardHeader>
       </Card>
     )
@@ -71,69 +104,49 @@ export function ZonePanel({ zone, name, tunable = false }: { zone: ZonePayload |
   return (
     <Card>
       <CardHeader>
-        <CardDescription>Rank #{zone.rank} · {zone.rank_reason}</CardDescription>
         <CardTitle className="text-xl">{name ?? zone.zone_id}</CardTitle>
+        <CardDescription>Priority #{zone.rank} · {zone.rank_reason}</CardDescription>
         <CardAction className="flex gap-1">
-          <Badge variant="outline">{zone.coverage.replace("_", " ")}</Badge>
+          <Badge variant="outline" className="capitalize">{zone.coverage.replace("_", " ")}</Badge>
           {zone.is_simulated && <Badge variant="destructive">Simulation</Badge>}
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="rounded-md border-l-4 bg-muted/40 p-3 text-sm font-medium" style={{ borderColor: color }}>
-          {zone.alert_text}
-        </div>
-        <Briefing zone={zone} tunable={tunable} />
         {!unknown && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-xs text-muted-foreground">Probability</div>
-              <div className="text-lg font-semibold tabular-nums">{Math.round((zone.probability ?? 0) * 100)}%</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Severity</div>
-              <div className="text-lg font-semibold capitalize" style={{ color }}>{zone.severity}</div>
-            </div>
-            <Window label="Onset" w={zone.onset} />
-            <Window label="Peak" w={zone.peak} />
+          <div className="grid grid-cols-4 gap-3">
+            <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />
+            <Stat label="Severity" value={zone.severity ?? "n/a"} color={color} />
+            <Stat label="Onset" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
+            <Stat label="Peak" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
           </div>
         )}
-        <div>
-          <div className="mb-1 text-xs text-muted-foreground">Why</div>
-          {zone.explanation && <p className="mb-2 text-sm">{zone.explanation}</p>}
-          {zone.reasons?.length ? (
-            <ol className="flex flex-col gap-1 text-sm">
-              {zone.reasons.map((r) => (
-                <li key={r.phrase} className="flex items-center justify-between gap-2">
-                  <span>{r.phrase}</span>
-                  <Badge variant={r.strength === "main reason" ? "default" : "outline"}>{r.strength}</Badge>
-                </li>
-              ))}
-            </ol>
-          ) : zone.drivers_text.length ? (
-            <ol className="list-decimal pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ol>
-          ) : (
-            <div className="text-sm text-muted-foreground">No usable gauge data for this zone.</div>
-          )}
-          {zone.model && <div className="mt-1 text-xs text-muted-foreground">model: {zone.model}</div>}
-        </div>
-        <div>
-          <div className="mb-1 text-xs text-muted-foreground">
-            Facilities in zone ({zone.exposure.length}) · locations from OpenStreetMap
-          </div>
-          <ul className="flex flex-col gap-1 text-sm">
-            {zone.exposure.slice(0, SHOWN_ASSETS).map((a, i) => (
-              <li key={i} className="flex items-center justify-between gap-2">
-                <span className="truncate">{a.name}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {a.type.replace("_", " ")} · {a.status === "confirmed" ? "confirmed" : "potentially exposed"}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {zone.exposure.length > SHOWN_ASSETS && (
-            <div className="mt-1 text-xs text-muted-foreground">+{zone.exposure.length - SHOWN_ASSETS} more</div>
-          )}
-        </div>
+        <Summary zone={zone} tunable={tunable} color={color} />
+        <Tabs defaultValue="why">
+          <TabsList>
+            <TabsTrigger value="why">Why</TabsTrigger>
+            <TabsTrigger value="facilities">Facilities ({zone.exposure.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="why" className="pt-2">
+            {zone.reasons?.length ? (
+              <ul className="flex flex-col gap-1.5 text-sm">
+                {zone.reasons.map((r) => (
+                  <li key={r.phrase} className="flex items-center justify-between gap-2">
+                    <span>{r.phrase}</span>
+                    <Badge variant={r.strength === "main reason" ? "default" : "outline"} className="shrink-0">{r.strength}</Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : zone.drivers_text.length ? (
+              <ul className="list-disc pl-5 text-sm">{zone.drivers_text.map((d) => <li key={d}>{d}</li>)}</ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No usable water gauge for this zone, so the risk is unknown.</p>
+            )}
+            {zone.model && <p className="mt-2 text-[11px] text-muted-foreground">Model {zone.model}</p>}
+          </TabsContent>
+          <TabsContent value="facilities" className="pt-2">
+            <Facilities items={zone.exposure} />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   )

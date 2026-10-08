@@ -31,11 +31,11 @@ export default function Dashboard() {
             Backend error: {String(error)}. Is the API running on port 8000?
           </div>
         )}
-        <div className="px-4 lg:px-6">
-          <TimeSlider ticks={ticks} events={events.data ?? []} />
-        </div>
-        <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
-          <RiskMap zones={zones} payloads={rows} />
+        <div className="grid grid-cols-1 items-start gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[2fr_1fr]">
+          <div className="flex flex-col gap-4">
+            <RiskMap zones={zones} payloads={rows} />
+            <TimeSlider ticks={ticks} events={events.data ?? []} />
+          </div>
           <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} />
         </div>
         <SectionCards payloads={rows} region={region} />
