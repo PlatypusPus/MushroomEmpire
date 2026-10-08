@@ -7,7 +7,7 @@ from test_backend import T0, synthetic_snapshot
 
 from app import api
 from app.agents.graph import run_tick_graph, run_zone
-from app.llm.client import ChatResult, LLMUnavailable
+from app.llm.client import ChatResult, LLMUnavailable, ThinkStripper
 from app.llm.client import chat as real_chat
 from app.main import app
 from app.orchestrator import run_tick
@@ -60,3 +60,47 @@ def test_client_wraps_transport_errors(monkeypatch):
         import asyncio
 
         asyncio.run(real_chat([{"role": "user", "content": "hi"}]))
+
+
+def test_think_stripper_whole_and_split():
+    s = ThinkStripper()
+    assert s.feed("Hello <think>hidden thoughts</think> world") + s.flush() == "Hello  world"
+
+    s = ThinkStripper()
+    out = s.feed("Hi <th") + s.feed("ink>secret</th") + s.feed("ink> there")
+    assert out + s.flush() == "Hi  there"
+
+
+def test_think_stripper_drops_unclosed_span():
+    s = ThinkStripper()
+    assert s.feed("Answer <think>never closed") == "Answer "
+    assert s.flush() == ""
+
+
+def test_chat_stream_endpoint(monkeypatch):
+    async def fake_stream(messages, *, system=None):
+        assert messages[-1]["content"] == "hi"
+        yield "hel"
+        yield "lo"
+
+    monkeypatch.setattr(api, "llm_chat_stream", fake_stream)
+    r = TestClient(app).post("/api/chat/stream", json={"messages": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 200, r.text
+    assert '"token": "hel"' in r.text and '"token": "lo"' in r.text
+    assert '"done": true' in r.text
+
+
+def test_chat_stream_rejects_empty():
+    c = TestClient(app)
+    assert c.post("/api/chat/stream", json={"messages": []}).status_code == 422
+
+
+def test_chat_stream_error_event(monkeypatch):
+    async def down(messages, *, system=None):
+        raise LLMUnavailable("daemon down")
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr(api, "llm_chat_stream", down)
+    r = TestClient(app).post("/api/chat/stream", json={"messages": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 200
+    assert '"error": "daemon down"' in r.text and "done" not in r.text
