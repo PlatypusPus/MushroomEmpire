@@ -186,3 +186,34 @@ class TidePrediction(Base):
     noaa_id: Mapped[str] = mapped_column(String(8), primary_key=True)
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     value: Mapped[float | None] = mapped_column(Float)
+
+
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    google_sub: Mapped[str] = mapped_column(String(64), unique=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    email_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    zone_id: Mapped[str] = mapped_column(ForeignKey("zones.id"), primary_key=True)
+
+
+class AlertDelivery(Base):
+    """One row per alert a user was told about; (user_id, key) is unique so replays and polling never notify twice."""
+    __tablename__ = "alert_deliveries"
+    __table_args__ = (UniqueConstraint("user_id", "key"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    key: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(12))  # replay | live
+    zone_id: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(12))  # sent | outbox | failed | muted

@@ -3,7 +3,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app import accounts
 from app.api import router, ws_router
+
+
+def settings_jwt() -> bool:
+    from app.config import settings
+
+    return bool(settings.jwt_secret)
 
 
 @asynccontextmanager
@@ -52,9 +59,12 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(_warm_llm())
     except Exception:
         pass
+    if settings_jwt():
+        accounts.spawn(accounts.live_alert_loop())
     yield
 
 
 app = FastAPI(title="KADAL", lifespan=lifespan)
 app.include_router(router, prefix="/api")
+app.include_router(accounts.router, prefix="/api")
 app.include_router(ws_router)

@@ -18,5 +18,17 @@ class Settings(BaseSettings):
     llm_brief_model: str = "ollama/qwen2.5:3b"  # constrained paraphrase: non-thinking model (qwen3 thinks in a
     # separate field and burns small token budgets on reasoning, leaving empty content)
 
+    # Accounts. Google ID-token sign-in needs only the (public) OAuth client id; jwt_secret signs our own session token.
+    google_client_id: str = ""
+    jwt_secret: str = ""  # required to enable accounts; generate with: python -c "import secrets;print(secrets.token_urlsafe(48))"
+    jwt_ttl_h: int = 24 * 7
+    # Alert email. With no smtp_host, mails are written to backend/outbox/ instead (still recorded as delivered=outbox).
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    live_alert_poll_s: int = 600
+
 
 settings = Settings()

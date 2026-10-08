@@ -10,3 +10,4 @@ context/
 backend/cache/
 .pytest_cache/
 .ruff_cache/
+backend/outbox/

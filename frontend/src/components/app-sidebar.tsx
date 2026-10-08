@@ -11,12 +11,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, MessageSquareIcon, ScaleIcon, WavesIcon } from "lucide-react"
+import { BellIcon, LayoutDashboardIcon, MessageSquareIcon, ScaleIcon, WavesIcon } from "lucide-react"
 
 const NAV = [
   { title: "Dashboard", url: "/dashboard", icon: <LayoutDashboardIcon /> },
   { title: "Assistant", url: "/chat", icon: <MessageSquareIcon /> },
   { title: "Model honesty", url: "/honesty", icon: <ScaleIcon /> },
+  { title: "Alerts & account", url: "/account", icon: <BellIcon /> },
 ]
 
 // Demo placeholder: no auth in this build, so the account menu is

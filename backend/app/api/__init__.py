@@ -8,7 +8,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app import replay
+from app import accounts, replay
 from app.config import settings
 from app.llm.client import LLMUnavailable, chat as llm_chat, chat_stream as llm_chat_stream
 from app.schemas import Event, ExposureItem, Metrics, Region, Weights, Zone, ZonePayload
@@ -93,7 +93,12 @@ async def replay_alerts(session_id: str, upto: Annotated[int, Query(ge=0)] = 0) 
     """Alert feed: each zone appears on the tick it first crosses the alert threshold (again after it clears)."""
     if not await replay.ensure(session_id):
         raise HTTPException(404, f"unknown session {session_id}")
-    return await run_in_threadpool(replay.alert_feed, session_id, upto)  # model work stays off the event loop
+    feed = await run_in_threadpool(replay.alert_feed, session_id, upto)  # model work stays off the event loop
+    sess = replay.sessions[session_id]
+    snap = replay.loaded(sess["event_id"])
+    accounts.spawn(accounts.notify_replay(feed, sess["event_id"], snap.event.get("name", f"event {sess['event_id']}"),  # emails followers once per alert
+                                               {z["id"]: z["name"] for z in snap.zones}))
+    return feed
 
 
 @ws_router.websocket("/ws/replay/{session_id}")
