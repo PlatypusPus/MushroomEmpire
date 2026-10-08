@@ -14,6 +14,7 @@ NOUN = "Water"
 
 
 def clock(t: datetime) -> str:
+    """Stored wall clock, unconverted: SF2Bench timezone is unknown (ROOT_CONTEXT 20.2f)."""
     return t.strftime("%I:%M %p").lstrip("0")
 
 

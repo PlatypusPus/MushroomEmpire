@@ -1,3 +1,4 @@
+import { Link, useLocation } from "react-router"
 import { Button } from "@/components/ui/button"
 import {
   SidebarGroup,
@@ -17,6 +18,7 @@ export function NavMain({
     icon?: React.ReactNode
   }[]
 }) {
+  const { pathname } = useLocation()
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
@@ -44,7 +46,11 @@ export function NavMain({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
+              <SidebarMenuButton
+                tooltip={item.title}
+                isActive={pathname === item.url}
+                render={<Link to={item.url} />}
+              >
                 {item.icon}
                 <span>{item.title}</span>
               </SidebarMenuButton>
