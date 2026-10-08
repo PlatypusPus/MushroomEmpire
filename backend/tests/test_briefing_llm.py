@@ -21,7 +21,7 @@ def payload(**kw) -> ZonePayload:
 
 
 def run(monkeypatch, reply):
-    async def fake_chat(messages, system=None):
+    async def fake_chat(messages, system=None, **kwargs):
         if isinstance(reply, Exception):
             raise reply
         return ChatResult(text=reply, model="ollama/qwen2.5:3b")

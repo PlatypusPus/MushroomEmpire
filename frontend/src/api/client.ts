@@ -185,7 +185,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ weights, ...q }),
     }),
-  zoneBriefing: (zone_id: string, q: SnapshotQuery = {}) =>
+  zoneBriefing: (zone_id: string, q: SnapshotQuery & Partial<Weights> = {}) =>
     apiFetch<{ zone_id: string; text: string; source: "llm" | "template"; model: string | null; reason: string | null }>(
       `/zones/${zone_id}/briefing${params({ ...q })}`
     ),
@@ -255,4 +255,77 @@ export async function streamChat(
     }
   }
   return model
+}
+
+export interface AssistantResult {
+  model: string | null
+  intent: string | null
+  zone_id: string | null
+  source: string | null
+}
+
+/** Token stream for POST /api/assistant/stream (SSE, grounded).
+ * Sends one question naming the place each time (e.g.
+ * "What is the status at Fort Lauderdale?") plus the dashboard's current
+ * event/issue_ts/weights so the answer reuses the already-computed tick
+ * cache and matches the ranking on screen. The server routes to the
+ * agents' ZonePayload outputs, number-checks the answer and streams the
+ * guarded text in word chunks. Resolves with intent/zone/source metadata. */
+export async function streamAssistant(
+  question: string,
+  onToken: (token: string) => void,
+  opts: { event_id?: number; issue_ts?: string; weights?: Weights; signal?: AbortSignal; onStatus?: (status: string) => void } = {}
+): Promise<AssistantResult> {
+  const res = await fetch("/api/assistant/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, event_id: opts.event_id, issue_ts: opts.issue_ts, weights: opts.weights }),
+    signal: opts.signal,
+  })
+  if (!res.ok || !res.body) {
+    let detail = res.statusText
+    try {
+      const body = await res.json()
+      detail = body.detail ?? detail
+    } catch {
+      /* keep statusText */
+    }
+    throw new ApiError(res.status, detail)
+  }
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ""
+  const out: AssistantResult = { model: null, intent: null, zone_id: null, source: null }
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const parts = buf.split("\n\n")
+    buf = parts.pop() ?? ""
+    for (const part of parts) {
+      for (const line of part.split("\n")) {
+        if (!line.startsWith("data:")) continue
+        const evt = JSON.parse(line.slice(5).trim()) as {
+          token?: string
+          status?: string
+          error?: string
+          done?: boolean
+          model?: string | null
+          intent?: string | null
+          zone_id?: string | null
+          source?: string | null
+        }
+        if (typeof evt.token === "string") onToken(evt.token)
+        else if (typeof evt.status === "string") opts.onStatus?.(evt.status)
+        else if (typeof evt.error === "string") throw new ApiError(503, evt.error)
+        else if (evt.done) {
+          out.model = evt.model ?? null
+          out.intent = evt.intent ?? null
+          out.zone_id = evt.zone_id ?? null
+          out.source = evt.source ?? null
+        }
+      }
+    }
+  }
+  return out
 }

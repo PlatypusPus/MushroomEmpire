@@ -132,6 +132,10 @@ def test_api_end_to_end_and_replay_ws():
         [f for f in feed if f["issue_ts"] == feed[-1]["issue_ts"]])  # a zone fires once per crossing
     assert all(f["zone_id"] != "C" for f in feed)  # unknown zones never alert
     assert c.get("/api/replay/nope/alerts").status_code == 404
+    # a restart loses sessions; the id alone must bring it back instead of a 404
+    replay.sessions.clear()
+    assert c.get(f"/api/replay/{sess['session_id']}/alerts?upto=2").json() == feed
+    assert c.post("/api/replay/999/start?step_h=3").json()["session_id"] == sess["session_id"]  # same id, one warm-up
     with c.websocket_connect(f"/ws/replay/{sess['session_id']}?interval_s=0") as ws:
         frames = [ws.receive_json() for _ in sess["ticks"]]
     assert len(frames[-1]["zones"]) == 3

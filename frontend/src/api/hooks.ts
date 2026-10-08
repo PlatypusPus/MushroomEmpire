@@ -2,9 +2,10 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { api, type SnapshotQuery, type Weights } from "./client"
 
 /** Local-LLM briefing for the selected zone only; paused while the replay plays so the 3B model isn't flooded. */
-export function useZoneBriefing(zone_id: string | undefined, q: SnapshotQuery, enabled: boolean) {
+export function useZoneBriefing(zone_id: string | undefined, q: SnapshotQuery & Partial<Weights>, enabled: boolean) {
+  const { event_id, issue_ts, ...weights } = q
   return useQuery({
-    queryKey: ["briefing", zone_id, q.event_id, q.issue_ts],
+    queryKey: ["briefing", zone_id, event_id, issue_ts, weights],
     queryFn: () => api.zoneBriefing(zone_id!, q),
     enabled: enabled && zone_id != null && q.issue_ts != null,
     staleTime: Infinity,

@@ -170,7 +170,7 @@ def test_assistant_answers_alert_questions_from_live_context(monkeypatch):
     patch_fetch(monkeypatch)
     ctx = asyncio.run(C.get_context())
 
-    async def down(messages, *, system=None):
+    async def down(messages, *, system=None, **kwargs):
         raise LLMUnavailable("down")
     r = ask("Are there any cyclones or warnings?", ctx, down, monkeypatch)
     assert r["intent"] == "context" and r["source"] == "template"
@@ -178,7 +178,7 @@ def test_assistant_answers_alert_questions_from_live_context(monkeypatch):
 
 
 def test_assistant_never_says_no_warnings_when_data_is_unavailable(monkeypatch):
-    async def liar(messages, *, system=None):
+    async def liar(messages, *, system=None, **kwargs):
         return ChatResult(text="There are no active warnings.", model="fake")
     r = ask("Are there any warnings?", {"level": None, "counties": {}, "last_recorded": None}, liar, monkeypatch)
     assert r["source"] == "template" and "unavailable" in r["answer"]
