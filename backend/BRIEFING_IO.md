@@ -46,6 +46,7 @@ Convert it with `briefing_input(payload, zone_name)`; give the LLM only that dic
 | `severity` | low, moderate, high, severe | Placeholder thresholds, not calibrated (see section 6) |
 | `onset`, `peak` | earliest, likely, latest clock times | `latest` can fall on the next day; show the three together as a window |
 | `drivers` | up to 3 plain phrases, strongest first | Already words, no numbers |
+| `reasons`, `explanation` | `[{phrase, strength}]` with strength `main reason` / `important` / `minor`, and one ready sentence | Value-checked by the Explainability agent (a phrase is only produced if the feature values support it). Prefer these over inventing causes. When the zone is not at risk they explain why it is not ("higher ground", "water well below its usual high-water mark") |
 | `exposure_counts`, `hospitals_named` | counts by type; only hospitals are named | Never list the raw asset list |
 | `rank`, `rank_reason` | recommended response order and the two top factors | The system recommends only; it never dispatches |
 | `is_simulated`, `coverage` | label flags | Must be echoed in the text if `is_simulated` |

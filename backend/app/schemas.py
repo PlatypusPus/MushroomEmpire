@@ -93,6 +93,12 @@ class Driver(Strict):
     contribution: float
 
 
+class Reason(Strict):
+    theme: str  # level | rise | swing | terrain | rain (or a legacy feature name)
+    phrase: str  # plain words, no numbers
+    strength: Literal["main reason", "important", "minor"]  # share of the total contribution, shown as words
+
+
 class DepthTrajectory(Strict):
     zone_id: str
     issue_ts: datetime
@@ -123,6 +129,8 @@ class ZonePayload(Strict):
     onset: TimeWindow | None  # None = no episode expected in horizon
     peak: TimeWindow | None
     drivers_text: list[str]
+    reasons: list[Reason] = []  # same story as drivers_text, with a strength word per reason
+    explanation: str | None = None  # one plain sentence built from the reasons
     exposure: list[ExposureItem]
     rank: int
     rank_reason: str

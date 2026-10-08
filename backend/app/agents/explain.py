@@ -1,12 +1,18 @@
-"""Explainability agent: model contributions -> fixed plain-language phrases. No numbers."""
+"""Explainability agent: model contributions -> short plain-language reasons. No numbers, no invented facts.
 
-from app.schemas import Driver
+The model's per-feature contributions (exact TreeSHAP from LightGBM) are grouped into themes, because several features
+say the same thing (current level, today's max and the 3-day max are one story). Each phrase is then checked against the
+feature value it describes, so the text can never claim "rising" for a falling gauge. Audit: scripts/sf_explain_audit.py.
+"""
 
+from app.schemas import Driver, FeatureVector, Reason
+
+# legacy one-feature phrases: used when no FeatureVector is given (and by tests / the persistence baseline's drivers)
 PHRASES = {
     "level_m": "high water level now",
     "level_trend": "water rising fast",
-    "rain_6h": "heavy recent rain",
-    "rain_24h": "heavy recent rain",
+    "rain_6h": "recent rain",
+    "rain_24h": "recent rain",
     "rain_72h": "several days of rain",
     "hand_m": "low height above drainage",
     "elevation_m": "low elevation",
@@ -19,12 +25,107 @@ PHRASES = {
     "gate": "flood gate operations",
     "pump": "pump operations",
 }
+THEME = {
+    "level_m": "level", "level_max_24h": "level", "level_max_72h": "level",
+    "level_trend": "rise", "level_change_6h": "rise", "level_change_24h": "rise",
+    "level_std_24h": "swing", "hand_m": "terrain", "elevation_m": "terrain",
+    "rain_6h": "rain", "rain_24h": "rain", "rain_72h": "rain",
+}
+ELEV_MEDIAN_M, HAND_MEDIAN_M = 3.7, 0.98  # medians over the 109 zones (ROOT_CONTEXT 2e): "low" / "high" ground is judged against these
+MIN_SHARE = 0.05  # themes below 5% of the total contribution are not mentioned
 
 
-def explain(drivers: list[Driver], top: int = 3) -> list[str]:
-    out = []
-    for d in sorted(drivers, key=lambda d: d.contribution, reverse=True):
-        phrase = PHRASES.get(d.feature, d.feature.replace("_", " "))
-        if d.contribution > 0 and phrase not in out:
-            out.append(phrase)
-    return out[:top] or ["no strong drivers"]
+def _pos(x):
+    return x is not None and x > 0
+
+
+def _raising(theme: str, fv: FeatureVector | None) -> str | None:
+    """Phrase for a theme that pushes risk UP, or None if the feature values do not support saying it."""
+    if fv is None:
+        return None
+    if theme == "level":
+        if fv.level_m > 0:
+            return "water already above its usual high-water mark"
+        if _pos(fv.level_max_24h):
+            return "water was above its high-water mark earlier today"
+        if _pos(fv.level_max_72h):
+            return "water was above its high-water mark in recent days"
+        return "water close to its usual high-water mark"
+    if theme == "rise":
+        if fv.level_trend_m_per_h > 0 or _pos(fv.level_change_6h):
+            return "water rising"
+        return "water higher than a day ago" if _pos(fv.level_change_24h) else None
+    if theme == "swing":
+        return "water levels swinging a lot"
+    if theme == "terrain":
+        low = (fv.elevation_m is not None and fv.elevation_m < ELEV_MEDIAN_M) or (fv.hand_m is not None and fv.hand_m < HAND_MEDIAN_M)
+        return "low-lying ground" if low else None
+    if theme == "rain":  # rain contributes very little in this data and its direction is unreliable: say "recent", never "heavy"
+        return "recent rain" if any(_pos(x) for x in (fv.rain_6h, fv.rain_24h, fv.rain_72h)) else None
+    return None
+
+
+def _protective(theme: str, fv: FeatureVector | None) -> str | None:
+    """Phrase for a theme that pushes risk DOWN (used to say why a zone is not expected to be at risk)."""
+    if fv is None:
+        return None
+    if theme == "level":
+        return "water well below its usual high-water mark" if fv.level_m < 0 else None
+    if theme == "rise":
+        return "water steady or falling" if fv.level_trend_m_per_h <= 0 and not _pos(fv.level_change_6h) else None
+    if theme == "swing":
+        return "calm water levels"
+    if theme == "terrain":
+        high = (fv.elevation_m is not None and fv.elevation_m >= ELEV_MEDIAN_M) or (fv.hand_m is not None and fv.hand_m >= HAND_MEDIAN_M)
+        return "higher ground" if high else None
+    return None
+
+
+def explain_detail(drivers: list[Driver], fv: FeatureVector | None = None, at_risk: bool = True, top: int = 3) -> list[Reason]:
+    score: dict[str, float] = {}
+    for d in drivers:
+        c = d.contribution if at_risk else -d.contribution
+        if c > 0:
+            score[THEME.get(d.feature, d.feature)] = score.get(THEME.get(d.feature, d.feature), 0.0) + c
+    total = sum(score.values())
+    out: list[Reason] = []
+    for theme, s in sorted(score.items(), key=lambda kv: -kv[1]):
+        share = s / total
+        if share < MIN_SHARE and out:
+            continue
+        if fv is None:  # no values to check against: fall back to the single-feature phrase
+            f = max((d for d in drivers if THEME.get(d.feature, d.feature) == theme), key=lambda d: d.contribution if at_risk else -d.contribution)
+            phrase = PHRASES.get(f.feature, f.feature.replace("_", " "))
+        else:
+            phrase = (_raising if at_risk else _protective)(theme, fv)
+        if phrase is None or any(r.phrase == phrase for r in out):
+            continue
+        out.append(Reason(theme=theme, phrase=phrase, strength="main reason" if share >= 0.5 else "important" if share >= 0.2 else "minor"))
+    return out[:top]
+
+
+def explain(drivers: list[Driver], top: int = 3, fv: FeatureVector | None = None, at_risk: bool = True) -> list[str]:
+    """Plain phrases, strongest first. Same call as before; pass fv to get value-checked, de-duplicated reasons."""
+    return [r.phrase for r in explain_detail(drivers, fv, at_risk, top)] or ["no strong drivers" if at_risk else "no strong protective factors"]
+
+
+def explain_text(reasons: list[Reason], at_risk: bool) -> str:
+    """One plain sentence for the UI. Strength words come from the share of the total contribution, never a number."""
+    if not reasons:
+        return "No single factor stands out."
+    lead = "Main reason" if reasons[0].strength == "main reason" else "Biggest factor"
+    s = f"{lead}: {reasons[0].phrase}."
+    rest = [r.phrase for r in reasons[1:]]
+    if rest:
+        s += f" Also: {', '.join(rest)}."
+    return s if at_risk else s.replace("Main reason", "Main reason for the low risk").replace("Biggest factor", "Biggest factor for the low risk")
+
+
+def explain_zone(drivers: list[Driver], fv: FeatureVector, risk) -> tuple[list[str], list[Reason], str]:
+    """(phrases, reasons, sentence) for one zone. Risk-raising reasons if the zone is at risk, else why it is not."""
+    from app import calibration
+
+    at_risk = risk.onset is not None or risk.probability >= calibration.alert_threshold()
+    reasons = explain_detail(drivers, fv, at_risk)
+    phrases = [r.phrase for r in reasons] or ["no strong drivers" if at_risk else "no strong protective factors"]
+    return phrases, reasons, explain_text(reasons, at_risk)

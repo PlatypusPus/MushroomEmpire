@@ -51,7 +51,8 @@ class Forecaster:
         steps = [DepthStep(t=fv.issue_ts + timedelta(hours=int(k)),
                            depth_m=DepthQuantiles(q10=float(q[0.1][i]), q50=float(q[0.5][i]), q90=float(q[0.9][i])))
                  for i, k in enumerate(ks)]
-        contrib = self.models[(LEADS[-1], 0.5)].predict(X, pred_contrib=True)[0][:-1]  # last column is the bias
+        peak_lead = min(LEADS, key=lambda L: abs(L - (int(np.argmax(q[0.5])) + 1)))  # explain the step where the median peaks
+        contrib = self.models[(peak_lead, 0.5)].predict(X, pred_contrib=True)[0][:-1]  # last column is the bias
         drivers = sorted((Driver(feature=DRIVER_NAME.get(f, f), contribution=float(c)) for f, c in zip(FEATURES, contrib)), key=lambda d: -abs(d.contribution))
         return DepthTrajectory(zone_id=fv.zone_id, issue_ts=fv.issue_ts, model=VERSION, is_simulated=fv.is_simulated, steps=steps, drivers=drivers)
 

@@ -44,6 +44,7 @@ def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
         "probability_pct": None if p.probability is None else round(p.probability * 100),
         "severity": p.severity, "onset": _window(p.onset), "peak": _window(p.peak),
         "drivers": p.drivers_text,
+        "reasons": [{"phrase": r.phrase, "strength": r.strength} for r in p.reasons], "explanation": p.explanation,
         "exposure_counts": dict(counts), "hospitals_named": named,
         "exposure_note": "shelters are only potential (OSM schools and community centres); never call them confirmed shelters",
         "rank": p.rank, "rank_reason": p.rank_reason,
@@ -55,7 +56,7 @@ def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
 def allowed_numbers(inp: dict) -> set[str]:
     nums = set(NUM.findall(" ".join(str(x) for x in [inp["zone_name"], inp["as_of"], inp["horizon_h"], inp["probability_pct"], inp["rank"],
                                                       *(inp["onset"] or {}).values(), *(inp["peak"] or {}).values(),
-                                                      *inp["exposure_counts"].values(), *inp["hospitals_named"], *inp["drivers"]])))
+                                                      *inp["exposure_counts"].values(), *inp["hospitals_named"], *inp["drivers"], inp["explanation"] or ""])))
     return nums
 
 

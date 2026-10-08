@@ -47,23 +47,23 @@
   "drivers_raw": [
    {
     "feature": "level_m",
-    "contribution": 0.9536988370323548
+    "contribution": 0.9400992773475552
    },
    {
     "feature": "level_max_24h",
-    "contribution": 0.09705544865096169
-   },
-   {
-    "feature": "level_max_72h",
-    "contribution": 0.06796984558141692
+    "contribution": 0.22045025137488342
    },
    {
     "feature": "level_change_6h",
-    "contribution": 0.046568292951681134
+    "contribution": -0.10820365526842125
    },
    {
-    "feature": "hand_m",
-    "contribution": -0.025553606381121655
+    "feature": "level_max_72h",
+    "contribution": 0.08637426664642621
+   },
+   {
+    "feature": "level_std_24h",
+    "contribution": 0.02391910973132085
    }
   ],
   "risk": {
@@ -102,10 +102,16 @@
     "latest": "2022-11-10T12:00:00Z"
    },
    "drivers_text": [
-    "high water level now",
-    "high water earlier today",
-    "high water over recent days"
+    "water already above its usual high-water mark"
    ],
+   "reasons": [
+    {
+     "theme": "level",
+     "phrase": "water already above its usual high-water mark",
+     "strength": "main reason"
+    }
+   ],
+   "explanation": "Main reason: water already above its usual high-water mark.",
    "exposure": [
     {
      "type": "shelter",
@@ -1600,7 +1606,7 @@
    ],
    "rank": 1,
    "rank_reason": "High probability, early onset",
-   "alert_text": "Severe Water Risk, Miami. Onset 1:00 PM, peak 12:00 AM. Drivers: high water level now + high water earlier today + high water over recent days",
+   "alert_text": "Severe Water Risk, Miami. Onset 1:00 PM, peak 12:00 AM. Drivers: water already above its usual high-water mark",
    "model": "lightgbm-quantile-v2"
   }
  },
@@ -1625,10 +1631,16 @@
      "latest": "2022-11-10T12:00:00Z"
     },
     "drivers_text": [
-     "high water level now",
-     "high water earlier today",
-     "high water over recent days"
+     "water already above its usual high-water mark"
     ],
+    "reasons": [
+     {
+      "theme": "level",
+      "phrase": "water already above its usual high-water mark",
+      "strength": "main reason"
+     }
+    ],
+    "explanation": "Main reason: water already above its usual high-water mark.",
     "exposure": [
      {
       "type": "shelter",
@@ -3123,7 +3135,7 @@
     ],
     "rank": 1,
     "rank_reason": "High probability, early onset",
-    "alert_text": "Severe Water Risk, Miami. Onset 1:00 PM, peak 12:00 AM. Drivers: high water level now + high water earlier today + high water over recent days",
+    "alert_text": "Severe Water Risk, Miami. Onset 1:00 PM, peak 12:00 AM. Drivers: water already above its usual high-water mark",
     "model": "lightgbm-quantile-v2"
    }
   },
@@ -3147,10 +3159,22 @@
      "latest": "2022-11-10T12:00:00Z"
     },
     "drivers_text": [
-     "high water level now",
-     "high water earlier today",
-     "high water over recent days"
+     "water already above its usual high-water mark",
+     "water rising"
     ],
+    "reasons": [
+     {
+      "theme": "level",
+      "phrase": "water already above its usual high-water mark",
+      "strength": "main reason"
+     },
+     {
+      "theme": "rise",
+      "phrase": "water rising",
+      "strength": "minor"
+     }
+    ],
+    "explanation": "Main reason: water already above its usual high-water mark. Also: water rising.",
     "exposure": [
      {
       "type": "shelter",
@@ -3380,7 +3404,7 @@
     ],
     "rank": 29,
     "rank_reason": "High probability, severe expected level",
-    "alert_text": "Severe Water Risk, Pompano Beach. Onset 7:00 PM, peak 12:00 PM. Drivers: high water level now + high water earlier today + high water over recent days",
+    "alert_text": "Severe Water Risk, Pompano Beach. Onset 7:00 PM, peak 12:00 PM. Drivers: water already above its usual high-water mark + water rising",
     "model": "lightgbm-quantile-v2"
    }
   },
@@ -3396,10 +3420,28 @@
     "onset": null,
     "peak": null,
     "drivers_text": [
-     "high water level now",
-     "high water over recent days",
-     "high water earlier today"
+     "water close to its usual high-water mark",
+     "water rising",
+     "low-lying ground"
     ],
+    "reasons": [
+     {
+      "theme": "level",
+      "phrase": "water close to its usual high-water mark",
+      "strength": "main reason"
+     },
+     {
+      "theme": "rise",
+      "phrase": "water rising",
+      "strength": "minor"
+     },
+     {
+      "theme": "terrain",
+      "phrase": "low-lying ground",
+      "strength": "minor"
+     }
+    ],
+    "explanation": "Main reason: water close to its usual high-water mark. Also: water rising, low-lying ground.",
     "exposure": [
      {
       "type": "shelter",
@@ -3525,10 +3567,10 @@
     "onset": null,
     "peak": null,
     "drivers_text": [
-     "high water level now",
-     "high water over recent days",
-     "high water earlier today"
+     "no strong protective factors"
     ],
+    "reasons": [],
+    "explanation": "No single factor stands out.",
     "exposure": [
      {
       "type": "shelter",
@@ -4104,6 +4146,8 @@
     "onset": null,
     "peak": null,
     "drivers_text": [],
+    "reasons": [],
+    "explanation": null,
     "exposure": [
      {
       "type": "shelter",
