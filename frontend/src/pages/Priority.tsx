@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { useEvents, useReplayData } from "@/api/hooks"
 import { AppShell } from "@/components/app-shell"
+import { LiveHazard } from "@/components/live-hazard"
 import { RankingQueue } from "@/components/ranking-queue"
 import { RiskMap } from "@/components/risk-map"
 import { ZonePanel } from "@/components/zone-panel"
@@ -10,6 +11,7 @@ import { useReplayStore } from "@/state/replayStore"
 /** Response priority: the one place ranking weights can be tuned. The dashboard always ranks with the defaults. */
 export default function Priority() {
   const selectedZone = useReplayStore((s) => s.selectedZone)
+  const live = useReplayStore((s) => s.mode) === "live"
   const events = useEvents()
   const { zones, ticks, names, rows, error } = useReplayData({ tunable: true })
 
@@ -27,10 +29,16 @@ export default function Priority() {
         )}
         <div className="grid grid-cols-1 items-start gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[3fr_2fr]">
           <div className="flex flex-col gap-4">
-            <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} />
-            <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} tunable />
+            <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} live={live} />
+            {!live && (
+              <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} tunable />
+            )}
           </div>
-          <RankingQueue payloads={rows} names={names} />
+          {live ? (
+            <LiveHazard />
+          ) : (
+            <RankingQueue payloads={rows} names={names} />
+          )}
         </div>
       </div>
     </AppShell>

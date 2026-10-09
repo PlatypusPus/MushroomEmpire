@@ -272,7 +272,7 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region, names
     return (
       <Card data-tour="panel" className="flex h-full min-h-0 flex-col overflow-hidden">
         <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
-          <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
+          <div className="shrink-0 px-(--card-spacing) pt-0 pb-2">
             <TabsList variant="line">
               <TabsTrigger value="details">Place Details</TabsTrigger>
               <TabsTrigger value="chat">Chat</TabsTrigger>
@@ -303,7 +303,7 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region, names
   return (
     <Card data-tour="panel" className="flex h-full min-h-0 flex-col overflow-hidden">
       <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
-        <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
+        <div className="shrink-0 px-(--card-spacing) pt-0 pb-2">
           <TabsList variant="line">
             <TabsTrigger value="details">Place Details</TabsTrigger>
             <TabsTrigger value="chat">Chat</TabsTrigger>
