@@ -1,5 +1,5 @@
 import * as React from "react"
-import { BellRingIcon, GraduationCapIcon, LayoutDashboardIcon, ListOrderedIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
+import { BellRingIcon, BracesIcon, GraduationCapIcon, LayoutDashboardIcon, ListOrderedIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
 
 import { useLiveContext, useReplayData } from "@/api/hooks"
 import { NavMain } from "@/components/nav-main"
@@ -36,6 +36,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: "Assistant", url: "/chat", icon: <MessageSquareIcon />, tour: "nav-assistant" },
     { title: "Model validation", url: "/validation", icon: <ChartColumnIcon /> },
     { title: "Tutorials", url: "/tutorials", icon: <GraduationCapIcon />, tour: "nav-tutorials" },
+    { title: "API & MCP", url: "/developers", icon: <BracesIcon /> },
   ]
 
   return (

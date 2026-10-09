@@ -6,5 +6,7 @@ import path from "path";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
-  server: { proxy: { "/api": "http://localhost:8000", "/ws": { target: "ws://localhost:8000", ws: true } } },
+  server: { proxy: { "/api": "http://localhost:8000", "/ws": { target: "ws://localhost:8000", ws: true },
+    // FastAPI's interactive API docs, linked from the API & MCP page
+    "/docs": "http://localhost:8000", "/openapi.json": "http://localhost:8000" } },
 });
