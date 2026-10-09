@@ -64,3 +64,29 @@ def test_update_promotes_only_a_better_model_and_never_trains_on_the_test_window
     tr = big[big["t"] + timedelta(hours=max(LEADS)) < cut]
     assert len(tr) == res["n_train"] and (tr["t"] + timedelta(hours=24) < cut).all()
     assert list(FEATURES) == list(df.columns[: len(FEATURES)])
+
+
+def test_gauge_search_keeps_surface_water_and_skips_wetland_gauges():
+    import asyncio
+
+    rdb = "\n".join([
+        "# USGS header comment",
+        "agency_cd\tsite_no\tstation_nm\tsite_tp_cd\tdec_lat_va\tdec_long_va",
+        "5s\t15s\t50s\t7s\t16s\t16s",
+        "USGS\t02286328\tC-8 CANAL AT NORTH MIAMI\tST-CA\t25.90\t-80.19",
+        "USGS\t261710080190001\tSITE 19 IN CONSERVATION AREA 2A\tWE\t26.29\t-80.32",
+        "USGS\t02290769\tSHARK RIVER SLOUGH\tST\t25.75\t-80.50",
+        "USGS\t261710080190002\tSITE 19 IN CONSERVATION AREA 2A\tST\t26.28\t-80.32",  # typed stream, really interior marsh
+    ])
+
+    class Resp:
+        status_code, text = 200, rdb
+        def raise_for_status(self): pass
+
+    class Client:
+        async def get(self, *a, **k): return Resp()
+
+    L._mem.clear()
+    found = asyncio.run(L.sites_near(Client(), 25.9, -80.2, radius_km=40))
+    assert [s["id"] for s in found] == ["02286328", "02290769"]  # nearest first, wetland gauge gone
+    assert found[0]["type"] == "ST-CA"

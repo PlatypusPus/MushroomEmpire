@@ -112,6 +112,9 @@ export interface WaterSpread {
   affected: Record<string, { score: number; from: string[]; lower: boolean }>
   spill_geo: GeoJSON.FeatureCollection<GeoJSON.Polygon | GeoJSON.MultiPolygon, { zone_id: string; severity: Severity; probability: number }>
 }
+/** GET /live/priority: places ranked now from our experimental forecast at each one's nearest live USGS gauge. */
+export interface LivePriority { status: "computing" | "ready"; done: number; total: number; issued: string | null; rows: ZonePayload[] }
+
 export interface AlertEvent {
   issue_ts: string
   zone_id: string
@@ -320,6 +323,8 @@ export const api = {
   zoneMitigation: (zone_id: string, q: SnapshotQuery = {}) =>
     apiFetch<Mitigation>(`/zones/${zone_id}/mitigation${params({ ...q })}`),
   water: (q: SnapshotQuery) => apiFetch<WaterSpread>(`/water${params({ ...q })}`),
+  livePriority: (weights: Weights) => apiFetch<LivePriority>(`/live/priority${params({ ...weights })}`),
+  zoneMitigationLive: (zone_id: string) => apiFetch<Mitigation>(`/zones/${zone_id}/mitigation/live`),
   liveForecast: (lat: number, lon: number) => apiFetch<LiveForecast>(`/live/forecast${params({ lat: lat.toFixed(4), lon: lon.toFixed(4) })}`),
   liveModel: () => apiFetch<LiveModelStatus>("/live/model"),
   mitigationAt: (lat: number, lon: number) => apiFetch<Mitigation>(`/mitigation/live/point${params({ lat: lat.toFixed(4), lon: lon.toFixed(4) })}`),

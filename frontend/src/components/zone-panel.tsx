@@ -1,5 +1,5 @@
 import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type Mitigation, type Region, type TimeWindow, type ZonePayload } from "@/api/client"
-import { useLiveForecast, useLiveMitigation, useMitigation, useZoneBriefing } from "@/api/hooks"
+import { useLiveForecast, useLiveMitigation, useMitigation, useZoneBriefing, useZoneMitigationLive } from "@/api/hooks"
 import type { ReactNode } from "react"
 import { FlameIcon, HospitalIcon, HouseIcon, PhoneIcon, ShieldIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -19,9 +19,10 @@ const NAMED = 5
 
 /** One sentence for the zone: the number-checked AI briefing when it adds something, else the alert itself. */
 function Summary({ zone, tunable, color }: { zone: ZonePayload; tunable: boolean; color: string }) {
-  const { eventId, playing, weights: tuned } = useReplayStore()
+  const { eventId, playing, weights: tuned, mode } = useReplayStore()
   const weights = tunable ? tuned : DEFAULT_WEIGHTS // same weights as the ranking shown beside it
-  const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts, ...weights }, !playing)
+  // the AI briefing reads the replay; a live ranking row is not part of any replay, so it shows its alert text
+  const b = useZoneBriefing(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts, ...weights }, !playing && mode !== "live")
   const ai = b.data?.source === "llm" ? b.data : null
   return (
     <div className="rounded-md border-l-4 bg-muted/40 p-3" style={{ borderColor: color }}>
@@ -126,7 +127,10 @@ const telOf = (phone: string) => `tel:${phone.split(" or ").pop()!.replace(/[^\d
 
 function WhatToDo({ zone }: { zone: ZonePayload }) {
   const eventId = useReplayStore((s) => s.eventId)
-  const m = useMitigation(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts })
+  const live = useReplayStore((s) => s.mode) === "live"
+  const replay = useMitigation(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts }, !live)
+  const now = useZoneMitigationLive(zone.zone_id, live) // live: follows the official warning level for the place's county
+  const m = live ? now : replay
   const color = zone.severity ? SEVERITY_COLOR[zone.severity] : UNKNOWN_COLOR
   return <MitigationView data={m.data} loading={m.isLoading} color={color} />
 }

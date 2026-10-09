@@ -4,6 +4,8 @@ import { useMemo } from "react"
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { api, type SnapshotQuery, type Weights } from "./client"
 
+const keepPrevious = <T,>(prev: T | undefined) => prev // weights change: keep the old ranking while the new one loads
+
 /** Local-LLM briefing for the selected zone only; paused while the replay plays so the 3B model isn't flooded. */
 export function useZoneBriefing(zone_id: string | undefined, q: SnapshotQuery & Partial<Weights>, enabled: boolean) {
   const { event_id, issue_ts, ...weights } = q
@@ -128,10 +130,11 @@ export function useZonePayload(zone_id: string | undefined, q: SnapshotQuery = {
 }
 
 /** Mitigation advice for the selected place at the shown time (fetched when its tab mounts). */
-export function useMitigation(zone_id: string, q: SnapshotQuery) {
+export function useMitigation(zone_id: string, q: SnapshotQuery, enabled = true) {
   return useQuery({
     queryKey: ["mitigation", zone_id, q.event_id, q.issue_ts],
     queryFn: () => api.zoneMitigation(zone_id, q),
+    enabled,
     staleTime: Infinity,
     retry: 1,
   })
@@ -173,6 +176,23 @@ export function useWaterSpread(event_id: number, issue_ts: string | undefined) {
     placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === event_id ? prev : undefined), // same rule as useTick
     retry: 1,
   })
+}
+
+/** Live response priority; polls quickly while the first (slow) computation runs, then every 5 minutes. */
+export function useLivePriority(weights: Weights, enabled: boolean) {
+  return useQuery({
+    queryKey: ["live-priority", weights],
+    queryFn: () => api.livePriority(weights),
+    enabled,
+    placeholderData: keepPrevious,
+    refetchInterval: (q) => (q.state.data?.status === "ready" ? 5 * 60 * 1000 : 4000),
+    retry: 1,
+  })
+}
+
+/** What to do for one of our places right now, following the official warning level for its county. */
+export function useZoneMitigationLive(zone_id: string, enabled: boolean) {
+  return useQuery({ queryKey: ["zone-mitigation-live", zone_id], queryFn: () => api.zoneMitigationLive(zone_id), enabled, staleTime: 5 * 60 * 1000, retry: 1 })
 }
 
 export function useRanking(q: SnapshotQuery & Partial<Weights> = {}) {

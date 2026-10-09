@@ -42,6 +42,12 @@ SITES = "https://waterservices.usgs.gov/nwis/site/"
 METEO = "https://api.open-meteo.com/v1"
 SF_BBOX = (-80.9, 25.1, -79.9, 26.6)  # lon/lat box around the South Florida places
 SEARCH_KM = 30
+# Surface-water gauges only (USGS site_tp_cd). Skipped: WE wetland gauges (Everglades marsh stage: storage levels far from towns,
+# at their yearly high every wet season) and anything that is not a stream, canal, estuary, lake or coast.
+SURFACE_TYPES = ("ST", "ES", "LK", "OC")
+# Some marsh gauges inside the Everglades water conservation areas are typed "ST"; their names give them away.
+# ponytail: name match, a site-type or land-cover lookup if more interior marsh gauges slip through
+INTERIOR_MARSH = ("CONSERVATION AREA", " WCA")
 STEP_H = 3  # one training row every 3 h per gauge
 EVAL_DAYS = 14
 ROUNDS = 60  # extra boosting rounds per live update
@@ -110,8 +116,11 @@ async def sites_near(c: httpx.AsyncClient, lat: float, lon: float, radius_km: fl
         out = []
         for row in rows[2:]:  # rows[1] is the column-width line
             x = dict(zip(h, row))
+            if not x.get("site_tp_cd", "").startswith(SURFACE_TYPES) or any(m in x.get("station_nm", "").upper() for m in INTERIOR_MARSH):
+                continue
             try:
-                out.append({"id": x["site_no"], "name": clean(x["station_nm"], 80), "lat": float(x["dec_lat_va"]), "lon": float(x["dec_long_va"])})
+                out.append({"id": x["site_no"], "name": clean(x["station_nm"], 80), "lat": float(x["dec_lat_va"]), "lon": float(x["dec_long_va"]),
+                            "type": x["site_tp_cd"]})
             except (KeyError, ValueError):
                 continue
         return out
@@ -285,13 +294,15 @@ def update(base: dict, df: pd.DataFrame, now: datetime) -> dict:
 
 # ------------------------------------------------------------------ tracking, learning loop
 def tracked() -> dict:
-    return _read("tracked.json", {})
+    """Gauges the learner follows. Entries saved before site types were recorded (possibly wetland gauges) are dropped;
+    South Florida's surface gauges are re-added by seed_sf on the next learning run."""
+    return {k: v for k, v in _read("tracked.json", {}).items() if "type" in v}
 
 
 def track(site: dict) -> None:
     t = tracked()
     if site["id"] not in t and len(t) < MAX_TRACKED:
-        t[site["id"]] = {"name": site["name"], "lat": site["lat"], "lon": site["lon"], "region": region_of(site["lat"], site["lon"])}
+        t[site["id"]] = {"name": site["name"], "lat": site["lat"], "lon": site["lon"], "region": region_of(site["lat"], site["lon"]), "type": site.get("type")}
         _write("tracked.json", t)
 
 

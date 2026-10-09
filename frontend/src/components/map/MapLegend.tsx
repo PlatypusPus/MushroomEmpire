@@ -15,7 +15,7 @@ function aqiColor(aqi: number | null): string {
 }
 
 /** Small square legend box, bottom-left: one swatch + label per line. */
-export function MapLegend({ live = false }: { live?: boolean }) {
+export function MapLegend({ live = false, spill = !live }: { live?: boolean; spill?: boolean }) {
   const marineAqiOn = useMapToggles((s) => s.marineAqi)
   const { data } = useEnvLayers()
   const showEnv = live && marineAqiOn && data && (data.marine || data.aqi)
@@ -35,7 +35,7 @@ export function MapLegend({ live = false }: { live?: boolean }) {
             not enough data
           </span>
         )}
-        {!live && (
+        {spill && (
           <span className="flex items-center gap-1.5">
             <span className="inline-block size-3 shrink-0 rounded-sm bg-blue-500/60" />
             water may spread

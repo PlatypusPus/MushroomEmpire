@@ -205,6 +205,16 @@ async def live_forecast(lat: Annotated[float, Query(ge=17, le=72)], lon: Annotat
     return {"available": True, **f} if f else {"available": False, "reason": "no active water-level gauge within 30 km"}
 
 
+@router.get("/live/priority")
+async def live_priority(weights: Annotated[Weights, Depends()]) -> dict:
+    """Response priority right now: our experimental live forecast at each place's nearest USGS gauge, ranked with these weights.
+    First call starts the computation in the background; poll until status is "ready". Places with no gauge are listed last as unknown."""
+    from app import live_priority as lp
+
+    _, snap = await active(None)
+    return lp.status(snap, weights)
+
+
 @router.get("/live/model")
 async def live_model_status() -> dict:
     """Which model each region uses, how many gauges it learns from, and the last learning run (promoted or not, with losses)."""
