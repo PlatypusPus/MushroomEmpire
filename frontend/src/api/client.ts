@@ -46,6 +46,8 @@ export interface ExposureItem {
   type: "road" | "building" | "hospital" | "shelter" | "police" | "fire_station"
   name: string
   status: "confirmed" | "potentially_exposed"
+  count?: number // a place's buildings are one item carrying the footprint count
+  detail?: string | null // e.g. "2.1 km here, 62% on low ground"
 }
 
 export interface ZonePayload {

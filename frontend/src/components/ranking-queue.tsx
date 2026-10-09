@@ -16,7 +16,7 @@ const HELP: Record<keyof Weights, string> = {
   probability: "The model's chance this place floods. Raise it to put the likeliest places first.",
   severity: "Expected depth: low 0, moderate 0.33, high 0.67, severe 1. Raise it to put the worst floods first.",
   urgency: "How close the start is: now 1, in 6 h 0.5, in 18 h 0.25. Raise it to put the earliest floods first.",
-  exposure: "Mapped roads, buildings and facilities, compared with the busiest place. Raise it to protect the most.",
+  exposure: "How many facilities and major roads are in the place, compared with the busiest place. Raise it to protect the most.",
   vulnerable: "Hospitals and potential shelters only. These are also in Facilities, so this gives them extra weight.",
   uncertainty: "How wide the start-time window is. Raise it to go early where timing is least sure. Off by default.",
 }

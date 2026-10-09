@@ -78,20 +78,46 @@ function OverviewStrip({ payloads, region }: { payloads: ZonePayload[]; region: 
   )
 }
 
+/** Affected: buildings and roads in the place (with how much sits on low ground), then its facilities. */
 function Facilities({ items }: { items: ExposureItem[] }) {
-  if (!items.length) return <p className="text-sm text-muted-foreground">No mapped facilities in this zone.</p>
-  const byType = TYPE_ORDER.map((t) => ({ t, list: items.filter((a) => a.type === t) })).filter((g) => g.list.length)
-  const hospitals = items.filter((a) => a.type === "hospital")
+  if (!items.length) return <p className="text-sm text-muted-foreground">Nothing mapped in this place.</p>
+  const of = (t: string) => items.filter((a) => a.type === t)
+  const buildings = of("building")[0]
+  const lowPct = (r: ExposureItem) => Number(r.detail?.match(/(\d+)% on low ground/)?.[1] ?? 0)
+  const roads = [...of("road")].sort((x, y) => lowPct(y) - lowPct(x)) // most low-lying first
+  const lowRoads = roads.filter((r) => r.status === "potentially_exposed").length
+  const facilities = items.filter((a) => a.type !== "road" && a.type !== "building")
+  const tiles: { label: string; value: string; sub?: string }[] = [
+    ...(buildings ? [{ label: "Buildings", value: (buildings.count ?? 0).toLocaleString(), sub: buildings.detail?.split(", ")[1] }] : []),
+    ...(roads.length ? [{ label: "Major roads", value: String(roads.length), sub: `${lowRoads} partly on low ground` }] : []),
+    ...TYPE_ORDER.filter((t) => t !== "road" && t !== "building" && of(t).length).map((t) => ({ label: TYPE_LABEL[t] ?? t, value: String(of(t).length) })),
+  ]
+  const hospitals = of("hospital")
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-2">
-        {byType.map(({ t, list }) => (
-          <div key={t} className="rounded-md border px-2.5 py-1.5">
-            <div className="text-base font-semibold tabular-nums">{list.length}</div>
-            <div className="text-[11px] text-muted-foreground">{TYPE_LABEL[t] ?? t}</div>
+        {tiles.map((t) => (
+          <div key={t.label} className="rounded-md border px-2.5 py-1.5">
+            <div className="text-base font-semibold tabular-nums">{t.value}</div>
+            <div className="text-[11px] text-muted-foreground">{t.label}</div>
+            {t.sub && <div className="text-[10px] text-muted-foreground">{t.sub}</div>}
           </div>
         ))}
       </div>
+      {roads.length > 0 && (
+        <div>
+          <div className="mb-1 text-[11px] text-muted-foreground">Roads, most on low ground first</div>
+          <ul className="flex flex-col gap-0.5 text-sm">
+            {roads.slice(0, NAMED).map((r) => <RoadRow key={r.name} r={r} />)}
+          </ul>
+          {roads.length > NAMED && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-[11px] text-muted-foreground">Show all {roads.length} roads</summary>
+              <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto pr-1">{roads.slice(NAMED).map((r) => <RoadRow key={r.name} r={r} />)}</ul>
+            </details>
+          )}
+        </div>
+      )}
       {hospitals.length > 0 && (
         <div>
           <div className="mb-1 text-[11px] text-muted-foreground">Hospitals</div>
@@ -100,19 +126,36 @@ function Facilities({ items }: { items: ExposureItem[] }) {
           </ul>
         </div>
       )}
-      <details className="text-sm">
-        <summary className="cursor-pointer text-[11px] text-muted-foreground">Show all {items.length}</summary>
-        <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto pr-1">
-          {items.map((a, i) => (
-            <li key={i} className="flex justify-between gap-2">
-              <span className="truncate">{a.name}</span>
-              <span className="shrink-0 text-[11px] text-muted-foreground">{a.status === "confirmed" ? "confirmed" : "potential"}</span>
-            </li>
-          ))}
-        </ul>
-      </details>
-      <p className="text-[11px] text-muted-foreground">Locations from OpenStreetMap. Shelters are schools and community centres, so only potential.</p>
+      {facilities.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer text-[11px] text-muted-foreground">Show all {facilities.length} facilities</summary>
+          <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto pr-1">
+            {facilities.map((a, i) => (
+              <li key={i} className="flex justify-between gap-2">
+                <span className="truncate">{a.name}</span>
+                <span className="shrink-0 text-[11px] text-muted-foreground">{a.status === "confirmed" ? "confirmed" : "potential"}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className="text-[11px] text-muted-foreground">
+        Roads and facilities from OpenStreetMap, buildings from Microsoft footprints. "Low ground" means close in height to the nearest
+        drain or canal (satellite terrain, rough); it does not mean the road or building floods. Shelters are schools and community centres, so only potential.
+      </p>
     </div>
+  )
+}
+
+function RoadRow({ r }: { r: ExposureItem }) {
+  return (
+    <li className="flex items-baseline justify-between gap-2">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className={`size-2 shrink-0 rounded-full ${r.status === "potentially_exposed" ? "bg-orange-500" : "bg-muted-foreground/40"}`} />
+        <span className="truncate">{r.name}</span>
+      </span>
+      <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{r.detail}</span>
+    </li>
   )
 }
 
@@ -337,7 +380,7 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region, names
               <TabsList>
                 <TabsTrigger value="why">Why</TabsTrigger>
                 <TabsTrigger value="todo">What to do</TabsTrigger>
-                <TabsTrigger value="facilities">Facilities ({zone.exposure.length})</TabsTrigger>
+                <TabsTrigger value="facilities">Affected</TabsTrigger>
               </TabsList>
               <TabsContent value="why" className="pt-2">
                 {zone.reasons?.length ? (

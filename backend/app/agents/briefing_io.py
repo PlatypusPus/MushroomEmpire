@@ -6,10 +6,10 @@ explicit `status` so the LLM does not have to infer it. grounded(): hard check t
 numbers (and zone name) that appear in that input. See backend/BRIEFING_IO.md.
 """
 import re
-from collections import Counter
 from datetime import timedelta
 
 from app import calibration
+from app.agents.exposure import counts as exposure_counts
 from app.schemas import ZonePayload
 
 HORIZON_H = 24
@@ -39,7 +39,7 @@ def _status(p: ZonePayload) -> str:
 
 def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
     status = _status(p)
-    counts = Counter(e.type for e in p.exposure)
+    counts = exposure_counts(p.exposure)
     named = [e.name for e in p.exposure if e.type == "hospital"][:max_names]  # only confirmed-kind facilities are named
     return {
         "zone_id": p.zone_id, "zone_name": zone_name, "status": status,
@@ -48,7 +48,7 @@ def briefing_input(p: ZonePayload, zone_name: str, max_names: int = 3) -> dict:
         "severity": p.severity, "onset": _window(p.onset), "peak": _window(p.peak),
         "drivers": p.drivers_text,
         "reasons": [{"phrase": r.phrase, "strength": r.strength} for r in p.reasons], "explanation": p.explanation,
-        "exposure_counts": dict(counts), "hospitals_named": named,
+        "exposure_counts": counts, "hospitals_named": named,
         "exposure_note": "shelters are only potential (OSM schools and community centres); never call them confirmed shelters",
         "rank": p.rank, "rank_reason": p.rank_reason,
         # peak: dedicated model since ROOT_CONTEXT 2n (mean error ~3.3 h, 80% window ~12 h wide); onset hour is only slightly better than "now"
@@ -91,7 +91,7 @@ def briefing_prompt(p: ZonePayload, zone_name: str) -> dict:
     if reasons:
         d["reasons"] = reasons
     if p.exposure:
-        counts = dict(Counter(e.type for e in p.exposure))
+        counts = exposure_counts(p.exposure)
         if counts:
             d["exposure_counts"] = counts
         named = [e.name for e in p.exposure if e.type == "hospital"][:2]

@@ -54,6 +54,8 @@ class ExposureItem(Strict):
     type: Literal["road", "building", "hospital", "shelter", "police", "fire_station"]
     name: str
     status: Literal["confirmed", "potentially_exposed"]
+    count: int = 1  # how many this item stands for: a place's buildings are one item carrying the footprint count
+    detail: str | None = None  # e.g. "2.1 km here, 62% on low ground"
 
 
 class FeatureVector(Strict):
