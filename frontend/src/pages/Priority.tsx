@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { useEvents, useLivePriority, useReplayData } from "@/api/hooks"
 import { AppShell } from "@/components/app-shell"
+import { LiveHazard } from "@/components/live-hazard"
 import { RankingQueue } from "@/components/ranking-queue"
 import { RiskMap } from "@/components/risk-map"
 import { ZonePanel } from "@/components/zone-panel"
@@ -56,7 +57,11 @@ export default function Priority() {
             <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} live={live} rankedLive />
             <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} tunable />
           </div>
-          <RankingQueue payloads={rows} names={names} />
+          <div className="flex flex-col gap-4">
+            <RankingQueue payloads={rows} names={names} />
+            {/* live: the official picture beside our experimental ranking */}
+            {live && <div className="shrink-0"><LiveHazard /></div>}
+          </div>
         </div>
       </div>
     </AppShell>
