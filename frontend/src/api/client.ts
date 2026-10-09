@@ -85,6 +85,28 @@ export interface Mitigation {
   nearest_failed?: boolean // live point: the nearby-places lookup failed (not "there are none")
 }
 
+/** GET /live/forecast: our model at the nearest active USGS gauge. Always experimental: validated only on South Florida replays. */
+export type LiveForecast =
+  | { available: false; reason: string }
+  | {
+      available: true
+      gauge: { id: string; name: string; km: number; lat: number; lon: number; url: string }
+      region: "sf" | "us"
+      validated: false
+      model: string
+      trained_at: string | null
+      level_vs_mark_ft: number
+      probability: number | null
+      severity: Severity | null
+      onset: string | null
+      peak: string | null
+      issued: string
+    }
+export interface LiveRun { at: string; region: string; n_train: number; n_eval: number; gauges: number; promoted: boolean; loss_current?: number; loss_new?: number; reason?: string; version?: string }
+export interface LiveModelStatus {
+  regions: Record<"sf" | "us", { version: string; base?: boolean; trained_at?: string; n_train?: number; gauges?: number; gauges_tracked: number; last_run: LiveRun | null }>
+}
+
 export interface AlertEvent {
   issue_ts: string
   zone_id: string
@@ -292,6 +314,8 @@ export const api = {
     ),
   zoneMitigation: (zone_id: string, q: SnapshotQuery = {}) =>
     apiFetch<Mitigation>(`/zones/${zone_id}/mitigation${params({ ...q })}`),
+  liveForecast: (lat: number, lon: number) => apiFetch<LiveForecast>(`/live/forecast${params({ lat: lat.toFixed(4), lon: lon.toFixed(4) })}`),
+  liveModel: () => apiFetch<LiveModelStatus>("/live/model"),
   mitigationAt: (lat: number, lon: number) => apiFetch<Mitigation>(`/mitigation/live/point${params({ lat: lat.toFixed(4), lon: lon.toFixed(4) })}`),
   replayAlerts: (session_id: string, upto: number) =>
     apiFetch<AlertEvent[]>(`/replay/${session_id}/alerts${params({ upto })}`),

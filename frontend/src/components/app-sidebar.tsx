@@ -1,5 +1,5 @@
 import * as React from "react"
-import { BellRingIcon, LayoutDashboardIcon, ListOrderedIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
+import { BellRingIcon, GraduationCapIcon, LayoutDashboardIcon, ListOrderedIcon, MessageSquareIcon, ChartColumnIcon, RadioIcon, WavesIcon } from "lucide-react"
 
 import { useLiveContext, useReplayData } from "@/api/hooks"
 import { NavMain } from "@/components/nav-main"
@@ -21,9 +21,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const monitor = [
     { title: "Dashboard", url: "/dashboard", icon: <LayoutDashboardIcon /> },
-    { title: "Response priority", url: "/priority", icon: <ListOrderedIcon /> },
+    { title: "Response priority", url: "/priority", icon: <ListOrderedIcon />, tour: "nav-priority" },
     {
-      title: "Alerts", url: "/alerts", icon: <BellRingIcon />,
+      title: "Alerts", url: "/alerts", icon: <BellRingIcon />, tour: "nav-alerts",
       // new alerts at the current replay step, else everything fired so far
       badge: feed.length ? (fresh ? <span className="text-destructive">{fresh} new</span> : feed.length) : null,
     },
@@ -33,8 +33,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     },
   ]
   const analyse = [
-    { title: "Assistant", url: "/chat", icon: <MessageSquareIcon /> },
+    { title: "Assistant", url: "/chat", icon: <MessageSquareIcon />, tour: "nav-assistant" },
     { title: "Model validation", url: "/validation", icon: <ChartColumnIcon /> },
+    { title: "Tutorials", url: "/tutorials", icon: <GraduationCapIcon />, tour: "nav-tutorials" },
   ]
 
   return (

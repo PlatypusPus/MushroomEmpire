@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # WhatsApp alerts via the Baileys bridge (whatsapp-bridge/). Off while the URL is empty.
     whatsapp_bridge_url: str = ""  # e.g. http://127.0.0.1:8787
     whatsapp_bridge_token: str = ""  # same value as BRIDGE_TOKEN in the bridge
+    # Live learning (app/live_model.py): retrain from new USGS gauge readings every N hours; 0 turns the loop off
+    live_learn_every_h: float = 24
 
 
 settings = Settings()

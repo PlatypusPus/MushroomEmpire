@@ -1,5 +1,5 @@
 // Model validation: held-out metrics exactly as Lane B recorded them in model_runs. Nothing here is recomputed or rounded up.
-import { useMetrics } from "@/api/hooks"
+import { useLiveModel, useMetrics } from "@/api/hooks"
 import { AppShell } from "@/components/app-shell"
 import { ChartLeadInteractive, type LeadRow } from "@/components/chart-lead-interactive"
 import { CalibrationChart, DetectionChart, SimpleBarChart, SkillChart } from "@/components/validation-charts"
@@ -26,6 +26,7 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
 
 function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) {
   return (
+    <div className="overflow-x-auto">{/* phones: the table scrolls inside its card instead of being cut off */}
     <table className="w-full text-sm tabular-nums">
       <thead>
         <tr className="border-b text-left text-xs text-muted-foreground">
@@ -40,8 +41,55 @@ function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) 
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
+
+const REGION_NAME = { sf: "South Florida", us: "Rest of the US" } as const
+
+/** Live learning: which model each region uses now and what the last daily update did. Separate from the validated numbers below. */
+function LiveLearning() {
+  const q = useLiveModel()
+  if (!q.data) return null
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Live learning</CardTitle>
+        <CardDescription>
+          Every day the model keeps training on new readings from USGS water gauges, starting from the model checked below. It is tested on
+          the newest 14 days it did not train on, and replaces the current model only if it is at least 1% more accurate there. These live
+          models are experimental: the validated numbers below are for the original model only.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        {(Object.keys(REGION_NAME) as (keyof typeof REGION_NAME)[]).map((r) => {
+          const x = q.data.regions[r]
+          const run = x.last_run
+          const better = run?.loss_new != null && run.loss_current != null ? Math.round((1 - run.loss_new / run.loss_current) * 100) : null
+          return (
+            <div key={r} className="rounded-lg border p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">{REGION_NAME[r]}</span>
+                <Badge variant={x.base ? "outline" : "secondary"}>{x.base ? "original model" : "live-trained"}</Badge>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">{x.gauges_tracked} gauge{x.gauges_tracked === 1 ? "" : "s"} followed{x.trained_at ? ` · updated ${new Date(x.trained_at).toLocaleDateString()}` : ""}</div>
+              {run ? (
+                <p className="mt-2">
+                  Last run {new Date(run.at).toLocaleDateString()}:{" "}
+                  {run.reason ? run.reason : run.promoted ? `updated, ${better}% more accurate on the last 14 days` : `kept the current model (new one was not ${PROMOTE_PCT}% better)`}
+                  <span className="block text-xs text-muted-foreground">{run.n_train.toLocaleString()} training rows · {run.n_eval.toLocaleString()} test rows · {run.gauges} gauges</span>
+                </p>
+              ) : (
+                <p className="mt-2 text-muted-foreground">No learning run yet.</p>
+              )}
+            </div>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
+}
+const PROMOTE_PCT = 1
 
 export default function Validation() {
   const q = useMetrics(REGION_ID)
@@ -96,6 +144,7 @@ export default function Validation() {
             </div>
           )}
         </div>
+        <LiveLearning />
         {q.isLoading && <div className="text-sm text-muted-foreground">Loading metrics...</div>}
         {q.error && <div className="text-sm text-destructive">Could not load metrics: {String(q.error)}</div>}
         {!run && !q.isLoading && !q.error && <div className="text-sm text-muted-foreground">No model run recorded for this region.</div>}

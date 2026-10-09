@@ -100,6 +100,7 @@ export function ZoneLayer({ zones, payloads, live = false }: { zones: Zone[]; pa
       },
     })
     layerRef.current = geo
+    idsRef.current = "" // a fresh layer is empty: force sync() to add the zones even if the zone set did not change
     if (useMapToggles.getState().zones) geo.addTo(map)
     const onMapClick = () => {
       if (skipDeselect.current) {

@@ -18,7 +18,7 @@ export function RiskMap({ zones, payloads, events = [], ticks, live = false }: {
     <Card className="flex h-full min-h-0 flex-col overflow-hidden">
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
         <DashboardMode events={events} />
-        <div className="min-h-64 w-full flex-1 overflow-hidden rounded-lg">
+        <div data-tour="map" className="min-h-64 w-full flex-1 overflow-hidden rounded-lg">
           <Map key={live ? "live" : "replay"} center={[25.95, -80.3]} zoom={8.6} attributionControl>
             <MapAutoResize />
             <MapTileLayer />
@@ -41,7 +41,7 @@ export function RiskMap({ zones, payloads, events = [], ticks, live = false }: {
             <MapLegend live={live} />
           </Map>
         </div>
-        {!live && ticks && ticks.length > 0 && <TimeSlider ticks={ticks} bare />}
+        {!live && ticks && ticks.length > 0 && <div data-tour="player"><TimeSlider ticks={ticks} bare /></div>}
       </CardContent>
     </Card>
   )

@@ -1,5 +1,9 @@
 import { clock, SEVERITY_COLOR, UNKNOWN_COLOR, type ExposureItem, type Mitigation, type Region, type TimeWindow, type ZonePayload } from "@/api/client"
-import { useLiveMitigation, useMitigation, useZoneBriefing } from "@/api/hooks"
+import { useLiveForecast, useLiveMitigation, useMitigation, useZoneBriefing } from "@/api/hooks"
+import type { ReactNode } from "react"
+import { FlameIcon, HospitalIcon, HouseIcon, PhoneIcon, ShieldIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { officialStatus } from "@/components/live-hazard"
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -111,48 +115,105 @@ function Facilities({ items }: { items: ExposureItem[] }) {
   )
 }
 
-const NEAR_LABEL: Record<string, string> = { shelter: "Potential shelters", hospital: "Hospital", fire_station: "Fire station", police: "Police" }
+const NEAR: Record<string, { label: string; icon: ReactNode }> = {
+  shelter: { label: "Shelter", icon: <HouseIcon className="size-4 text-sky-500" /> },
+  hospital: { label: "Hospital", icon: <HospitalIcon className="size-4 text-red-500" /> },
+  fire_station: { label: "Fire", icon: <FlameIcon className="size-4 text-orange-500" /> },
+  police: { label: "Police", icon: <ShieldIcon className="size-4 text-blue-500" /> },
+}
 const directions = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
+const telOf = (phone: string) => `tel:${phone.split(" or ").pop()!.replace(/[^\d]/g, "")}`
 
 function WhatToDo({ zone }: { zone: ZonePayload }) {
   const eventId = useReplayStore((s) => s.eventId)
   const m = useMitigation(zone.zone_id, { event_id: eventId, issue_ts: zone.issue_ts })
-  return <MitigationView data={m.data} loading={m.isLoading} />
+  const color = zone.severity ? SEVERITY_COLOR[zone.severity] : UNKNOWN_COLOR
+  return <MitigationView data={m.data} loading={m.isLoading} color={color} />
 }
 
-/** Mitigation agent output: what to do now, who to call, nearest potential shelters and services. Recommends only. */
-function MitigationView({ data: d, loading }: { data: Mitigation | undefined; loading: boolean }) {
+/** Mitigation agent output: one headline, short numbered steps, call buttons, nearest places. Recommends only. */
+function MitigationView({ data: d, loading, color }: { data: Mitigation | undefined; loading: boolean; color: string }) {
   if (loading) return <p className="text-sm text-muted-foreground">Loading advice…</p>
   if (!d) return <p className="text-sm text-destructive">Could not load advice for this place.</p>
+  const [head, ...rest] = d.steps
   return (
-    <div className="flex flex-col gap-4 text-sm">
-      {d.is_simulated && <p className="text-[11px] text-muted-foreground">Advice for a replay of a past storm, shown as practice.</p>}
-      <ol className="flex list-decimal flex-col gap-1.5 pl-5">{d.steps.map((s) => <li key={s}>{s}</li>)}</ol>
-      <div>
-        <div className="mb-1 text-[11px] text-muted-foreground">Who to call</div>
-        <ul className="flex flex-col gap-1">
-          {d.contacts.map((c) => (
-            <li key={c.name} className="flex flex-wrap items-baseline justify-between gap-x-2">
-              <span>{c.url ? <a href={c.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{c.name}</a> : c.name}</span>
-              <a href={`tel:${c.phone.split(" or ").pop()!.replace(/[^\d]/g, "")}`} className="shrink-0 font-medium tabular-nums">{c.phone}</a>
+    <div className="flex flex-col gap-4">
+      <p className="rounded-lg border-l-4 bg-muted/50 px-3 py-2 text-base font-semibold leading-snug" style={{ borderColor: color }}>
+        {head}
+        {d.is_simulated && <span className="ml-2 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground">practice</span>}
+      </p>
+      <ol className="flex flex-col gap-2">
+        {rest.map((s, i) => (
+          <li key={s} className="flex items-start gap-2.5 text-[15px] font-medium leading-snug">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-bold tabular-nums">{i + 1}</span>
+            {s}
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap gap-1.5">
+        {d.contacts.map((c) => (
+          <a key={c.name} href={telOf(c.phone)} title={c.phone}
+            className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-muted",
+              c.phone === "911" && "border-red-500 bg-red-500 text-white hover:bg-red-600")}>
+            <PhoneIcon className="size-3.5" />
+            {c.phone === "911" ? "911" : c.name}
+          </a>
+        ))}
+      </div>
+      {Object.values(d.nearest).some((l) => l.length > 0) && (
+      <ul className="flex flex-col divide-y rounded-lg border">
+        {(["shelter", "hospital", "fire_station", "police"] as const).flatMap((k) =>
+          d.nearest[k].map((p) => (
+            <li key={k + p.name}>
+              <a href={directions(p.lat, p.lon)} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60">
+                {NEAR[k].icon}
+                <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">{p.km} km</span>
+              </a>
             </li>
-          ))}
-        </ul>
+          ))
+        )}
+      </ul>
+      )}
+      <p className="text-[11px] text-muted-foreground">{d.shelter_note} {d.distance_note}</p>
+    </div>
+  )
+}
+
+/** Our model at the nearest live USGS gauge: a second opinion beside the official warnings, always labelled experimental. */
+function LiveForecastBlock({ lat, lon }: { lat: number; lon: number }) {
+  const q = useLiveForecast(lat, lon)
+  const f = q.data
+  const box = "rounded-lg border border-dashed p-3"
+  if (q.isLoading) return <div className={`${box} text-sm text-muted-foreground`}>Checking the nearest water gauge…</div>
+  if (!f || !f.available) return <div className={`${box} text-xs text-muted-foreground`}>Our forecast: {f?.reason ?? "unavailable right now"}.</div>
+  const color = f.severity ? SEVERITY_COLOR[f.severity] : UNKNOWN_COLOR
+  const time = (iso: string) => new Date(iso).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })
+  const learned = f.model.includes("+live")
+  return (
+    <div className={box}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Our forecast</span>
+        <Badge variant="outline" className="border-dashed">Experimental</Badge>
       </div>
-      <div>
-        <div className="mb-1 text-[11px] text-muted-foreground">Nearest places</div>
-        <ul className="flex flex-col gap-1">
-          {(["shelter", "hospital", "fire_station", "police"] as const).flatMap((k) =>
-            d.nearest[k].map((p) => (
-              <li key={k + p.name} className="flex items-baseline justify-between gap-2">
-                <span className="min-w-0 truncate"><span className="text-muted-foreground">{NEAR_LABEL[k]}:</span> {p.name}</span>
-                <a href={directions(p.lat, p.lon)} target="_blank" rel="noreferrer" className="shrink-0 tabular-nums underline underline-offset-2">{p.km} km</a>
-              </li>
-            ))
-          )}
-        </ul>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">{d.shelter_note} {d.distance_note}</p>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-3xl font-bold tabular-nums" style={{ color }}>{f.probability == null ? "?" : `${Math.round(f.probability * 100)}%`}</span>
+        <span className="text-sm">chance of high water in 24 h</span>
       </div>
+      <p className="text-sm font-medium">
+        {f.onset
+          ? `Likely above its usual high mark from ${time(f.onset)}`
+          : f.level_vs_mark_ft >= 0
+            ? `Already ${f.level_vs_mark_ft} ft above its usual high mark`
+            : `${Math.abs(f.level_vs_mark_ft)} ft below its usual high mark now`}
+      </p>
+      <a href={f.gauge.url} target="_blank" rel="noreferrer" className="mt-1 block truncate text-[11px] text-muted-foreground underline underline-offset-2">
+        {f.gauge.name.toLowerCase()} · {f.gauge.km} km away
+      </a>
+      <p className="text-[11px] text-muted-foreground">
+        {learned ? `Keeps learning from live gauges · updated ${f.trained_at ? new Date(f.trained_at).toLocaleDateString() : ""}` : "Trained on South Florida history"}
+        {f.region === "us" ? " · not tested in this area" : ""}
+      </p>
     </div>
   )
 }
@@ -161,25 +222,26 @@ function MitigationView({ data: d, loading }: { data: Mitigation | undefined; lo
 export function LivePlacePanel({ lat, lon }: { lat: number; lon: number }) {
   const m = useLiveMitigation(lat, lon)
   const d = m.data
-  const color = d && d.level !== "unknown" ? SEVERITY_COLOR[d.level] : UNKNOWN_COLOR
+  const st = officialStatus(d?.official?.level)
   return (
-    <Card className="shrink-0">
+    <Card data-live-place className="shrink-0 overflow-hidden">
+      <div className="h-1.5" style={{ background: d ? st.color : "transparent" }} />
       <CardHeader>
-        <CardTitle className="text-xl">{d?.name ?? "Place"}</CardTitle>
-        <CardDescription>{d?.county ? `${d.county} County · ` : ""}What to do now, based on official warnings</CardDescription>
+        <CardTitle className="text-2xl font-bold tracking-tight">{d?.name ?? "Checking…"}</CardTitle>
         <CardAction>
-          <Badge variant="outline" className="capitalize" style={{ borderColor: color }}>Official: {d?.official?.label ?? "…"}</Badge>
+          {d && <span className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide" style={{ background: st.color, color: st.ink }}>{st.word}</span>}
         </CardAction>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="flex flex-col gap-4">
         {d?.official && d.official.active.length > 0 && (
-          <div className="rounded-md border-l-4 bg-muted/40 p-3 text-sm" style={{ borderColor: color }}>
-            Active now: {d.official.active.join(", ")}
+          <div className="flex flex-wrap gap-1.5">
+            {d.official.active.map((a) => <Badge key={a} variant="secondary">{a.replace(/ \(.*\)$/, "")}</Badge>)}
           </div>
         )}
-        <MitigationView data={d} loading={m.isLoading} />
-        {d?.nearest_failed && <p className="text-[11px] text-destructive">Could not look up nearby shelters and services right now. That does not mean there are none.</p>}
-        <p className="text-[11px] text-muted-foreground">From National Weather Service warnings{d?.county ? " for the county" : " at this spot"}, not from our flood forecast. Press Esc to close.</p>
+        <LiveForecastBlock lat={lat} lon={lon} />
+        <MitigationView data={d} loading={m.isLoading} color={st.color} />
+        {d?.nearest_failed && <p className="text-xs text-destructive">Nearby places did not load. Retrying soon.</p>}
+        <p className="text-[11px] text-muted-foreground">Official warnings, not our forecast · Esc to close</p>
       </CardContent>
     </Card>
   )
@@ -188,7 +250,7 @@ export function LivePlacePanel({ lat, lon }: { lat: number; lon: number }) {
 export function ZonePanel({ zone, name, tunable = false, payloads, region }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean; payloads?: ZonePayload[]; region?: Region }) {
   if (!zone) {
     return (
-      <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Card data-tour="panel" className="flex h-full min-h-0 flex-col overflow-hidden">
         <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
           <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
             <TabsList variant="line">
@@ -216,7 +278,7 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region }: { z
   const unknown = zone.coverage === "insufficient_data"
   const color = zone.severity ? SEVERITY_COLOR[zone.severity] : UNKNOWN_COLOR
   return (
-    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+    <Card data-tour="panel" className="flex h-full min-h-0 flex-col overflow-hidden">
       <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
         <div className="shrink-0 px-(--card-spacing) pt-(--card-spacing)">
           <TabsList variant="line">

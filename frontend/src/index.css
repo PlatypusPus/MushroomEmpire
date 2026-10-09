@@ -227,3 +227,12 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Minimal scrollbars everywhere: thin, no track, a faint thumb that firms up on hover. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 25%, transparent) transparent;
+}
+*:hover {
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent) transparent;
+}

@@ -22,7 +22,7 @@ export function MapLegend({ live = false }: { live?: boolean }) {
 
   return (
     <MapControlContainer className="bottom-1 left-1">
-      <div className="flex w-max max-w-44 flex-col gap-1 rounded-md border bg-card/90 px-2 py-1.5 text-[11px] whitespace-nowrap text-muted-foreground shadow-sm backdrop-blur">
+      <div data-tour="legend" className="flex w-max max-w-44 flex-col gap-1 rounded-md border bg-card/90 px-2 py-1.5 text-[11px] whitespace-nowrap text-muted-foreground shadow-sm backdrop-blur">
         {!live && (Object.keys(SEVERITY_COLOR) as Severity[]).map((s) => (
           <span key={s} className="flex items-center gap-1.5">
             <span className="inline-block size-3 shrink-0 rounded-sm" style={{ backgroundColor: SEVERITY_COLOR[s] }} />

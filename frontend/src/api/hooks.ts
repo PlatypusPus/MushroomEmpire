@@ -148,6 +148,21 @@ export function useLiveMitigation(lat: number, lon: number) {
   })
 }
 
+/** Our experimental forecast at the nearest live gauge; the first look at a gauge downloads its year of history (slow once). */
+export function useLiveForecast(lat: number, lon: number) {
+  return useQuery({
+    queryKey: ["live-forecast", lat.toFixed(4), lon.toFixed(4)],
+    queryFn: () => api.liveForecast(lat, lon),
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
+    retry: 1,
+  })
+}
+
+export function useLiveModel() {
+  return useQuery({ queryKey: ["live-model"], queryFn: api.liveModel, staleTime: 5 * 60 * 1000, retry: 1 })
+}
+
 export function useRanking(q: SnapshotQuery & Partial<Weights> = {}) {
   const { event_id, issue_ts, ...weights } = q
   return useQuery({

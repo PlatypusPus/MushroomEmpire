@@ -181,6 +181,28 @@ async def zone_mitigation_live(zone_id: str) -> dict:
     return advise_live(zone, (ctx.get("counties") or {}).get(zone.get("county")))
 
 
+@router.get("/live/forecast")
+async def live_forecast(lat: Annotated[float, Query(ge=17, le=72)], lon: Annotated[float, Query(ge=-180, le=-64)]) -> dict:
+    """Our experimental forecast at the nearest active USGS gauge (none within 30 km -> available: false). Never validated live."""
+    import httpx
+
+    from app import live_model
+
+    try:
+        f = await live_model.forecast_at(lat, lon)
+    except (httpx.HTTPError, KeyError, ValueError):
+        return {"available": False, "reason": "gauge data unavailable right now"}
+    return {"available": True, **f} if f else {"available": False, "reason": "no active water-level gauge within 30 km"}
+
+
+@router.get("/live/model")
+async def live_model_status() -> dict:
+    """Which model each region uses, how many gauges it learns from, and the last learning run (promoted or not, with losses)."""
+    from app import live_model
+
+    return live_model.status()
+
+
 @router.get("/mitigation/live/point")
 async def mitigation_live_point(lat: Annotated[float, Query(ge=17, le=72)], lon: Annotated[float, Query(ge=-180, le=-64)]) -> dict:
     """Live dashboard, any clicked US point: inside one of our places -> that place's advice; elsewhere -> advice from the official

@@ -61,6 +61,16 @@ async def lifespan(app: FastAPI):
         pass
     if settings_jwt():
         accounts.spawn(accounts.live_alert_loop())
+    from app.config import settings as cfg
+
+    if cfg.live_learn_every_h > 0:
+        async def _learn_later():  # let startup and the first dashboard load finish before pulling gauge data
+            from app import live_model
+
+            await asyncio.sleep(120)
+            await live_model.learn_loop(cfg.live_learn_every_h)
+
+        accounts.spawn(_learn_later())
     yield
 
 

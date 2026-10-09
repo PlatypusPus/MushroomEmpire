@@ -5,6 +5,7 @@ import { useAlertToasts } from "@/components/alert-feed"
 import { AppShell } from "@/components/app-shell"
 import { LiveHazard } from "@/components/live-hazard"
 import { RiskMap } from "@/components/risk-map"
+import { Tour, useFirstVisitTour } from "@/components/tour"
 import { LivePlacePanel, ZonePanel } from "@/components/zone-panel"
 import { useReplayStore } from "@/state/replayStore"
 
@@ -16,6 +17,17 @@ export default function Dashboard() {
   // fixed default weights here; tuning happens only on the Response priority page
   const { region, zones, ticks, now, names, rows, feed, error } = useReplayData()
   useAlertToasts(live ? [] : feed, names, now) // the full feed lives on the Alerts page
+  useFirstVisitTour()
+
+  // Stacked layout (phones, narrow windows): the details open below the map, so bring them into view after a tap
+  React.useEffect(() => {
+    if (!selectedZone && !livePoint) return
+    const t = setTimeout(() => {
+      const el = document.querySelector(live ? "[data-live-place]" : '[data-tour="panel"]')
+      if (el && el.getBoundingClientRect().top > window.innerHeight * 0.6) el.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 150)
+    return () => clearTimeout(t)
+  }, [selectedZone, livePoint, live])
 
   // Esc clears the selected zone
   React.useEffect(() => {
@@ -30,6 +42,7 @@ export default function Dashboard() {
 
   return (
     <AppShell>
+      <Tour />
       <div className="@container/main flex flex-1 flex-col gap-4 py-4 md:gap-6 md:py-6">
         {!live && error && (
           <div className="mx-4 rounded-md border border-destructive p-3 text-sm text-destructive lg:mx-6">

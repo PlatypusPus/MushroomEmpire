@@ -11,6 +11,7 @@ import Validation from "./pages/Validation";
 import Alerts from "./pages/Alerts";
 import Priority from "./pages/Priority";
 import LiveHazards from "./pages/LiveHazards";
+import Tutorials from "./pages/Tutorials";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -33,6 +34,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/priority" element={<Priority />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/live" element={<LiveHazards />} />
+            <Route path="/tutorials" element={<Tutorials />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

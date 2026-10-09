@@ -14,6 +14,7 @@ export interface NavItem {
   url: string
   icon?: React.ReactNode
   badge?: React.ReactNode // live count or level shown at the right of the item
+  tour?: string // data-tour key the guided tour spotlights
 }
 
 export function NavMain({ label, items }: { label?: string; items: NavItem[] }) {
@@ -25,7 +26,7 @@ export function NavMain({ label, items }: { label?: string; items: NavItem[] }) 
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} render={<Link to={item.url} />}>
+              <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} render={<Link to={item.url} />} data-tour={item.tour}>
                 {item.icon}
                 <span>{item.title}</span>
               </SidebarMenuButton>

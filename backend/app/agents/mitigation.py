@@ -18,50 +18,29 @@ from shapely.geometry import shape
 from app.schemas import ZonePayload
 
 DATA = Path(__file__).with_name("facilities.json")  # built from data/processed/sf_facilities.csv, named places only
-NEAREST = {"shelter": 3, "hospital": 1, "fire_station": 1, "police": 1}
+NEAREST = {"shelter": 2, "hospital": 1, "fire_station": 1, "police": 1}
 
-EMERGENCY = {"name": "Emergency (life in danger, trapped by water)", "phone": "911"}
+# Short on purpose: people read this under stress, often on a phone. One action per line.
+EMERGENCY = {"name": "Emergency", "phone": "911"}
 STATE = [
-    {"name": "Florida Emergency Information Line (active during disasters)", "phone": "1-800-342-3557", "url": "https://www.floridadisaster.org"},
-    {"name": "American Red Cross: find an open shelter", "phone": "1-800-733-2767", "url": "https://www.redcross.org/get-help/disaster-relief-and-recovery-services/find-an-open-shelter.html"},
-    {"name": "FEMA disaster assistance (after the flood)", "phone": "1-800-621-3362", "url": "https://www.disasterassistance.gov"},
+    {"name": "Florida emergency line", "phone": "1-800-342-3557", "url": "https://www.floridadisaster.org"},
+    {"name": "Red Cross shelters", "phone": "1-800-733-2767", "url": "https://www.redcross.org/get-help/disaster-relief-and-recovery-services/find-an-open-shelter.html"},
+    {"name": "FEMA aid (after)", "phone": "1-800-621-3362", "url": "https://www.disasterassistance.gov"},
 ]
-CONTACTS = {
-    "Miami-Dade": {"name": "Miami-Dade 311 Answer Center: open shelters, evacuation buses, special-needs help", "phone": "311 or 305-468-5900",
-                   "url": "https://www.miamidade.gov/global/emergency/hurricane/home.page"},
-    "Broward": {"name": "Broward County Emergency Hotline: open shelters, special-needs and pet-friendly shelters", "phone": "311 or 954-831-4000",
-                "url": "https://www.broward.org/Hurricane"},
+CONTACTS = {  # open shelters, evacuation buses, special-needs and pet-friendly shelters
+    "Miami-Dade": {"name": "Miami-Dade 311", "phone": "311 or 305-468-5900", "url": "https://www.miamidade.gov/global/emergency/hurricane/home.page"},
+    "Broward": {"name": "Broward hotline", "phone": "311 or 954-831-4000", "url": "https://www.broward.org/Hurricane"},
 }
 
-ALWAYS = [
-    "Never walk or drive through flood water. Six inches of moving water can knock you down and a foot can carry a car away.",
-    "If your county orders an evacuation for your area, leave when told.",
-]
+ALWAYS = ["Never walk or drive through floodwater."]
 STEPS = {
-    "unknown": [
-        "We cannot forecast this place: there is no working water sensor nearby. Treat the risk as unknown, not low.",
-        "Follow National Weather Service warnings and your county's instructions.",
-        "Have a go-bag ready: medicines, documents in a waterproof bag, phone charger, water and food for 3 days.",
-    ],
-    "low": [
-        "Flooding is not expected here now. Use the time to prepare.",
-        "Clear gutters and storm drains near your home if it is safe to do so.",
-        "Keep your phone charged and documents in a waterproof bag.",
-    ],
-    "moderate": [
-        "Move valuables, documents and electrical items off the floor or upstairs.",
-        "Park your car on higher ground, away from low streets and canals.",
-        "Plan how you would get to higher ground, and check on neighbours who may need help.",
-        "Have a go-bag ready: medicines, documents, phone charger, water and food for 3 days.",
-    ],
-    "high": [
-        "Be ready to leave before the water arrives. Low streets may flood first and cut off your route.",
-        "Move people, pets and valuables to a higher floor. Do not shelter in an attic you cannot climb out of.",
-        "If water is about to enter your home, switch off electricity at the main switch, but only if you can do it dry.",
-        "Check with your county which shelters are open before you go.",
-    ],
+    "unknown": ["Risk unknown, not low: no sensor nearby.", "Follow official warnings.", "Pack a go-bag: meds, papers, charger, water."],
+    "low": ["No flooding expected. Get ready anyway.", "Charge your phone.", "Bag your documents."],
+    "moderate": ["Move valuables up high.", "Park on higher ground.", "Plan your way out.", "Pack a go-bag."],
+    "high": ["Be ready to leave early.", "Go up a floor, never into a closed attic.", "Power off at the main, only if dry.",
+             "Check which shelters are open."],
 }
-STEPS["severe"] = ["This is the highest risk level we show. If you are told to evacuate, do not wait.", *STEPS["high"]]
+STEPS["severe"] = ["Told to evacuate? Go now.", *STEPS["high"]]
 
 
 @lru_cache(maxsize=1)
@@ -86,10 +65,7 @@ def nearest(lat: float, lon: float, facs: list[dict]) -> dict[str, list[dict]]:
 
 
 def _when(p: ZonePayload) -> str | None:
-    if not p.onset:
-        return None
-    t = p.onset.likely.strftime("%H:%M")
-    return f"Water may start rising around {t}{' on ' + p.onset.likely.strftime('%b %d') if p.peak and p.peak.likely.date() != p.onset.likely.date() else ''}. Finish getting ready before then."
+    return f"Water may rise from {p.onset.likely.strftime('%b %d, %H:%M')}. Be ready before." if p.onset else None
 
 
 def _advice(zone: dict, level: str, steps: list[str], is_simulated: bool, facs: list[dict] | None) -> dict:
@@ -103,9 +79,8 @@ def _advice(zone: dict, level: str, steps: list[str], is_simulated: bool, facs: 
         "steps": steps + ALWAYS,
         "contacts": [EMERGENCY, *([county] if county else []), *STATE],
         "nearest": nearest(c.y, c.x, facs if facs is not None else facilities()),
-        "shelter_note": "These are schools and community centres that are often used as shelters. Not all of them open in every storm. "
-                        "Call your county line before you go to check which shelters are open.",
-        "distance_note": "Straight-line distance from the centre of the place, not a driving route.",
+        "shelter_note": "Shelters are schools and community centres. Not all open: call first.",
+        "distance_note": "Straight-line distance.",
         "is_simulated": is_simulated,
     }
 
@@ -119,13 +94,12 @@ def advise(p: ZonePayload, zone: dict, facs: list[dict] | None = None) -> dict:
 # Live: no model forecast exists (no live gauge feed), so advice follows the official NWS level for the place's county.
 # context.LEVELS: 0 none, 1 advisory or statement, 2 watch, 3 warning, 4 most serious warning; None = alert feed unavailable.
 LIVE_STEPS = {
-    None: ["We cannot reach the official warning feed right now. That does not mean there is no danger.",
-           "Check weather.gov or local news, and call your county line for instructions."],
-    0: ["There is no official flood watch or warning for this county right now. Use the time to prepare."] + STEPS["low"][1:],
-    1: ["An official advisory or statement is in effect. Minor flooding of low roads is possible."] + STEPS["moderate"],
-    2: ["An official watch is in effect: flooding is possible. Be ready to act quickly if it becomes a warning."] + STEPS["moderate"],
-    3: ["An official warning is in effect: flooding is happening or about to happen."] + STEPS["high"],
-    4: ["The most serious official warnings are in effect here, such as a hurricane or storm surge warning."] + STEPS["severe"],
+    None: ["Warning feed is down. That does not mean no danger.", "Check weather.gov or local news."],
+    0: ["No official warnings here. Prepare now."] + STEPS["low"][1:],
+    1: ["Advisory: minor flooding possible."] + STEPS["moderate"],
+    2: ["Watch: flooding possible. Stay ready."] + STEPS["moderate"],
+    3: ["Warning: flooding now or very soon."] + STEPS["high"],
+    4: ["Most serious warning in effect."] + STEPS["severe"],
 }
 LIVE_LEVEL = {None: "unknown", 0: "low", 1: "moderate", 2: "moderate", 3: "high", 4: "severe"}
 
@@ -157,14 +131,12 @@ def advise_point(lat: float, lon: float, where: dict | None, alerts: list[dict] 
         "name": f"{where['city']}, {state}" if where else f"{lat:.3f}, {lon:.3f}",
         "county": None,
         "level": LIVE_LEVEL[lv],
-        "steps": list(LIVE_STEPS[lv]) + ["This spot is outside the places we cover in detail, so we do not list its county's number. "
-                                         "Call 911 in danger, and follow your county emergency management and local news."] + ALWAYS,
+        "steps": list(LIVE_STEPS[lv]) + ALWAYS,  # outside our places: no county number, the contacts list says 911 first
         "contacts": contacts,
         "nearest": nearest(lat, lon, facs) if facs else {k: [] for k in NEAREST},
         "nearest_failed": facs is None,
-        "shelter_note": "These are schools and community centres that are often used as shelters. Not all of them open in every storm. "
-                        "Check with local emergency management which shelters are open before you go.",
-        "distance_note": "Straight-line distance from the point you clicked, not a driving route.",
+        "shelter_note": "Shelters are schools and community centres. Not all open: call first.",
+        "distance_note": "Straight-line distance.",
         "is_simulated": False,
         "official": {"level": lv, "label": "unknown (alert feed unavailable)" if lv is None else LEVELS[lv],
                      "active": [a["event"] for a in alerts or []]},

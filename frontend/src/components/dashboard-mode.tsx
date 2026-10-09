@@ -15,7 +15,7 @@ import { useReplayStore } from "@/state/replayStore"
 export function DashboardMode({ events }: { events: CoastEvent[] }) {
   const { mode, setMode, eventId, setEvent } = useReplayStore()
   return (
-    <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+    <div data-tour="mode" className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
       <NavigationMenu aria-label="Dashboard mode">
         <NavigationMenuList>
           <NavigationMenuItem>
@@ -43,12 +43,12 @@ export function DashboardMode({ events }: { events: CoastEvent[] }) {
         </NavigationMenuList>
       </NavigationMenu>
       {mode === "replay" && (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-w-0 items-center gap-2 text-sm">
           <span className="text-muted-foreground">Event</span>
           <select
             value={eventId}
             onChange={(e) => setEvent(+e.target.value)}
-            className="max-w-72 rounded-md border bg-background px-2 py-1 text-sm"
+            className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm sm:max-w-72 sm:flex-none"
             aria-label="Storm to replay"
           >
             {events.map((ev) => (
