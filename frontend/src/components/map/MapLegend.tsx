@@ -35,6 +35,12 @@ export function MapLegend({ live = false }: { live?: boolean }) {
             not enough data
           </span>
         )}
+        {!live && (
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block size-3 shrink-0 rounded-sm bg-blue-500/60" />
+            water may spread
+          </span>
+        )}
         {/* live items only in Live mode: a replay is a past storm, today's warnings and sea/air would be the wrong time */}
         {live && (<>
         <span className="flex items-center gap-1.5">

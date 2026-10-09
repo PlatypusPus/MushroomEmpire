@@ -181,6 +181,16 @@ async def zone_mitigation_live(zone_id: str) -> dict:
     return advise_live(zone, (ctx.get("counties") or {}).get(zone.get("county")))
 
 
+@router.get("/water")
+async def water_spread(issue_ts: datetime | None = None, event_id: int | None = None) -> dict:
+    """Where flood water may spread at this replay time: affected neighbours and spill-zone shapes. An indicator, not a hydraulic model."""
+    from app.agents.water import spread
+
+    eid, snap = await active(event_id)
+    ps = list(await payloads(eid, issue_ts))
+    return await run_in_threadpool(spread, snap, ps)
+
+
 @router.get("/live/forecast")
 async def live_forecast(lat: Annotated[float, Query(ge=17, le=72)], lon: Annotated[float, Query(ge=-180, le=-64)]) -> dict:
     """Our experimental forecast at the nearest active USGS gauge (none within 30 km -> available: false). Never validated live."""

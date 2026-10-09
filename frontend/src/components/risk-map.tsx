@@ -10,6 +10,7 @@ import { MapLegend } from "./map/MapLegend"
 import { MapToggles } from "./map/MapToggles"
 import { RadarOverlay } from "./map/RadarOverlay"
 import { WindParticles } from "./map/WindParticles"
+import { SpillLayer } from "./map/SpillLayer"
 import { ZoneLayer } from "./map/ZoneLayer"
 import { TimeSlider } from "./time-slider"
 
@@ -36,7 +37,10 @@ export function RiskMap({ zones, payloads, events = [], ticks, live = false }: {
                 <WindParticles />
               </>
             ) : (
-              <ZoneLayer zones={zones} payloads={payloads} />
+              <>
+                <SpillLayer issueTs={payloads[0]?.issue_ts} />
+                <ZoneLayer zones={zones} payloads={payloads} />
+              </>
             )}
             <MapLegend live={live} />
           </Map>

@@ -66,10 +66,10 @@ function OverviewStrip({ payloads, region }: { payloads: ZonePayload[]; region: 
   const items = [
     { label: "Places on alert", value: `${alerts}/${payloads.length}` },
     { label: "Hospitals and shelters", value: String(facilities) },
-    { label: "insufficient data", value: String(unknown) },
+    { label: "Risk unknown", value: String(unknown) },
   ]
   return (
-    <div className="grid grid-cols-4 gap-3 border-b pb-3">
+    <div className="grid grid-cols-3 gap-3 border-b pb-3">
       {items.map((c) => (
         <Stat key={c.label} label={c.label} value={c.value} />
       ))}
@@ -247,7 +247,27 @@ export function LivePlacePanel({ lat, lon }: { lat: number; lon: number }) {
   )
 }
 
-export function ZonePanel({ zone, name, tunable = false, payloads, region }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean; payloads?: ZonePayload[]; region?: Region }) {
+/** Empty panel: the places most worth a look right now, so nobody is left guessing where to click. */
+function TopPlaces({ payloads, names }: { payloads: ZonePayload[]; names: Map<string, string> }) {
+  const select = useReplayStore((s) => s.select)
+  const top = [...payloads].filter((p) => p.probability != null).sort((a, b) => a.rank - b.rank).slice(0, 3)
+  if (!top.length) return null
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Highest priority now</div>
+      {top.map((p) => (
+        <button key={p.zone_id} type="button" onClick={() => select(p.zone_id)}
+          className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors hover:bg-muted">
+          <span className="size-3 shrink-0 rounded-full" style={{ background: p.severity ? SEVERITY_COLOR[p.severity] : UNKNOWN_COLOR }} />
+          <span className="min-w-0 flex-1 truncate font-semibold">{names.get(p.zone_id) ?? p.zone_id}</span>
+          <span className="shrink-0 text-sm font-bold tabular-nums">{Math.round((p.probability ?? 0) * 100)}%</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function ZonePanel({ zone, name, tunable = false, payloads, region, names }: { zone: ZonePayload | undefined; name: string | undefined; tunable?: boolean; payloads?: ZonePayload[]; region?: Region; names?: Map<string, string> }) {
   if (!zone) {
     return (
       <Card data-tour="panel" className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -264,7 +284,10 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region }: { z
             </CardHeader>
             {payloads && (
               <CardContent>
-                <OverviewStrip payloads={payloads} region={region} />
+                <div className="flex flex-col gap-4">
+                  <OverviewStrip payloads={payloads} region={region} />
+                  {names && <TopPlaces payloads={payloads} names={names} />}
+                </div>
               </CardContent>
             )}
           </TabsContent>
@@ -301,8 +324,8 @@ export function ZonePanel({ zone, name, tunable = false, payloads, region }: { z
               <div className="grid grid-cols-4 gap-3">
                 <Stat label="Chance" value={`${Math.round((zone.probability ?? 0) * 100)}%`} />
                 <Stat label="How bad" value={zone.severity ?? "n/a"} color={color} />
-                <Stat label="Starts" value={zone.onset ? clock(zone.onset.likely) : "none"} sub={windowSub(zone.onset)} />
-                <Stat label="Worst at" value={zone.peak ? clock(zone.peak.likely) : "none"} sub={windowSub(zone.peak)} />
+                <Stat label="Starts" value={zone.onset ? clock(zone.onset.likely) : "Not in 24 h"} sub={windowSub(zone.onset)} />
+                <Stat label="Worst at" value={zone.peak ? clock(zone.peak.likely) : "Not in 24 h"} sub={windowSub(zone.peak)} />
               </div>
             )}
             <Summary zone={zone} tunable={tunable} color={color} />

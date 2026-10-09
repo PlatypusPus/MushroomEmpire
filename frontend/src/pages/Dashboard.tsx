@@ -59,7 +59,7 @@ export default function Dashboard() {
               <LiveHazard />
             </div>
           ) : (
-            <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} payloads={rows} region={region} />
+            <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} payloads={rows} region={region} names={names} />
           )}
         </div>
       </div>

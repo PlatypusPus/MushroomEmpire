@@ -163,6 +163,18 @@ export function useLiveModel() {
   return useQuery({ queryKey: ["live-model"], queryFn: api.liveModel, staleTime: 5 * 60 * 1000, retry: 1 })
 }
 
+/** Spill zones and affected neighbours for the replay step on screen. */
+export function useWaterSpread(event_id: number, issue_ts: string | undefined) {
+  return useQuery({
+    queryKey: ["water", event_id, issue_ts],
+    queryFn: () => api.water({ event_id, issue_ts }),
+    enabled: issue_ts != null,
+    staleTime: Infinity,
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === event_id ? prev : undefined), // same rule as useTick
+    retry: 1,
+  })
+}
+
 export function useRanking(q: SnapshotQuery & Partial<Weights> = {}) {
   const { event_id, issue_ts, ...weights } = q
   return useQuery({
