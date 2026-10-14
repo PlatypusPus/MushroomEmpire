@@ -11,6 +11,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      closeButton // an x on every toast, so an alert can be dismissed without waiting for it to time out
       icons={{
         success: (
           <CircleCheckIcon className="size-4" />

@@ -1,17 +1,29 @@
 """Replay engine: steps an issue_ts clock through one event using only data available at each tick.
 
 Ticks are computed by the same chain the live path uses and memoised, so scrubbing re-reads
-instead of recomputing (ROOT_CONTEXT 15.2)."""
+instead of recomputing (ROOT_CONTEXT 15.2). Each computed tick is also saved to backend/cache/ticks/ (gzip JSON), so a
+backend restart, or the next demo, plays back instantly instead of recomputing every step while the play button runs ahead.
+The file name carries a fingerprint of everything that shapes the output (snapshot, model, calibration, exposure data,
+weights, CACHE_VERSION): change any of them and the old file is simply never read again."""
 
+import gzip
+import hashlib
+import json
 import re
 import threading
 from datetime import datetime, timedelta
 from functools import lru_cache
+from pathlib import Path
 
 from app.orchestrator import run_tick
 from app.schemas import Weights, ZonePayload
-from app.store import Snapshot, from_db
+from app.store import CACHE_DIR, Snapshot, from_db
 
+TICK_DIR = CACHE_DIR / "ticks"
+CACHE_VERSION = 1  # bump when pipeline code changes what a tick contains (data and model changes are caught by the fingerprint)
+_INPUTS = [Path(__file__).resolve().parents[1] / rel for rel in (
+    "../models_store/lightgbm_v2.joblib", "../models_store/peak_v1.joblib", "../models_store/calibration_v2.json",
+    "agents/place_exposure.json", "agents/facilities.json")]
 REFIRE_AFTER = timedelta(hours=24)  # a zone alerts again only after this long off alert
 _feed_lock = threading.Lock()
 _snaps: dict[int, Snapshot] = {}
@@ -43,9 +55,33 @@ def ticks(snap: Snapshot, step_h: int) -> list[datetime]:
     return out
 
 
+def _tick_path(event_id: int, issue_ts: datetime, weights: Weights | None) -> Path:
+    def mtime(p: Path) -> float:
+        try:
+            return p.stat().st_mtime
+        except OSError:
+            return 0.0
+    key = json.dumps([CACHE_VERSION, [mtime(p) for p in _INPUTS], mtime(CACHE_DIR / f"snapshot_{event_id}.json"),
+                      (weights or Weights()).model_dump()], sort_keys=True)
+    return TICK_DIR / str(event_id) / f"{issue_ts:%Y%m%dT%H%M}_{hashlib.sha1(key.encode()).hexdigest()[:12]}.json.gz"
+
+
 @lru_cache(maxsize=4096)
 def tick(event_id: int, issue_ts: datetime, weights: Weights | None = None) -> tuple[ZonePayload, ...]:
-    return tuple(run_tick(loaded(event_id), issue_ts, weights))
+    path = _tick_path(event_id, issue_ts, weights)
+    try:
+        return tuple(ZonePayload.model_validate(d) for d in json.loads(gzip.decompress(path.read_bytes())))
+    except (OSError, ValueError):
+        pass  # not cached yet (or unreadable): compute it
+    out = tuple(run_tick(loaded(event_id), issue_ts, weights))
+    try:  # write then rename, so a crash never leaves a half file that later reads as a tick
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".{threading.get_ident()}.tmp")
+        tmp.write_bytes(gzip.compress(json.dumps([p.model_dump(mode="json") for p in out]).encode(), compresslevel=6))
+        tmp.replace(path)
+    except OSError:
+        pass  # read-only disk: still works, just recomputes after a restart
+    return out
 
 
 

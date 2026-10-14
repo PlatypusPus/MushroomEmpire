@@ -8,6 +8,7 @@ import { useMapToggles, type MapToggleKey } from "@/state/mapLayersStore"
 
 const LAYER_ROWS: { key: MapToggleKey; label: string; desc: string }[] = [
   { key: "zones", label: "Flood risk colours", desc: "Colours show how bad the risk is" },
+  { key: "spill", label: "Water may spread", desc: "Where flooding places may spill over" },
   { key: "alerts", label: "Warning areas", desc: "Live weather watches and warnings" },
   { key: "radar", label: "Rain radar", desc: "Moving rain map, last hour" },
   { key: "cyclones", label: "Storms", desc: "Live storms and their possible path" },
@@ -42,10 +43,10 @@ export function MapToggles({ live }: { live: boolean }) {
         </PopoverTrigger>
         <PopoverContent align="end" side="bottom" className="z-1000 w-72">
           {live ? (
-            <ToggleSection title="Live layers" rows={[{ key: "zones", label: "Places", desc: "The South Florida places we cover in detail" }, ...LAYER_ROWS.filter((r) => r.key !== "zones")]} />
+            <ToggleSection title="Live layers" rows={[{ key: "zones", label: "Places", desc: "The South Florida places we cover in detail" }, ...LAYER_ROWS.filter((r) => r.key !== "zones" && r.key !== "spill")]} />
           ) : (
             <>
-              <ToggleSection title="Layers" rows={LAYER_ROWS.filter((r) => r.key === "zones")} />
+              <ToggleSection title="Layers" rows={LAYER_ROWS.filter((r) => r.key === "zones" || r.key === "spill")} />
               <div className="mt-2 border-t pt-2">
                 <ToggleSection title="Animations" rows={ANIM_ROWS} />
               </div>

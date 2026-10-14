@@ -4,6 +4,7 @@ import { create } from "zustand"
  * for the toggle panel; overlays subscribe to their own key. */
 export type MapToggleKey =
   | "zones"
+  | "spill"
   | "alerts"
   | "radar"
   | "cyclones"
@@ -21,6 +22,7 @@ export type MapToggleState = Record<MapToggleKey, boolean> & {
 
 export const useMapToggles = create<MapToggleState>()((set) => ({
   zones: true,
+  spill: true, // replay: where flood water may spread from flooding places
   alerts: true,
   radar: false,
   cyclones: true,

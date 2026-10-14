@@ -8,7 +8,7 @@ import { useReplayStore } from "@/state/replayStore"
  * (under them it would be hidden); non-interactive, so clicks still reach the places. */
 export function SpillLayer({ issueTs }: { issueTs: string | undefined }) {
   const eventId = useReplayStore((s) => s.eventId)
-  const on = useMapToggles((s) => s.zones)
+  const on = useMapToggles((s) => s.spill)
   const q = useWaterSpread(eventId, issueTs)
   if (!on || !q.data) return null
   return (

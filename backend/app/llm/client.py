@@ -92,6 +92,11 @@ def _content_to_text(content: object) -> str:
     return "" if content is None else str(content)
 
 
+def _base(model: str) -> str | None:
+    """The Ollama URL only for ollama/ models; hosted providers (gemini/, openai/...) use their own endpoint."""
+    return (settings.ollama_base_url or None) if model.startswith("ollama") else None
+
+
 async def chat(
     messages: list[dict[str, str]], *, system: str | None = None,
     max_tokens: int | None = None, timeout_s: float | None = None,
@@ -104,7 +109,7 @@ async def chat(
         resp = await litellm.acompletion(
             model=name,
             messages=convo,
-            api_base=settings.ollama_base_url or None,
+            api_base=_base(name),
             api_key=settings.llm_api_key or None,
             temperature=temperature if temperature is not None else settings.llm_temperature,
             timeout=timeout_s or settings.llm_timeout_s,
@@ -137,7 +142,7 @@ async def chat_stream(messages: list[dict[str, str]], *, system: str | None = No
         stream = await litellm.acompletion(
             model=settings.llm_model,
             messages=convo,
-            api_base=settings.ollama_base_url or None,
+            api_base=_base(settings.llm_model),
             api_key=settings.llm_api_key or None,
             temperature=settings.llm_temperature,
             timeout=settings.llm_timeout_s,

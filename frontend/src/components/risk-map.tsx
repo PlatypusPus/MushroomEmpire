@@ -16,7 +16,7 @@ import { TimeSlider } from "./time-slider"
 
 /** `rankedLive`: Response priority in Live mode. Places are coloured by our live (experimental) forecast, official warnings stay,
  * the view stays on South Florida, and replay-only layers (spill zones, time slider) are left out. */
-export function RiskMap({ zones, payloads, events = [], ticks, live = false, rankedLive = false }: { zones: Zone[]; payloads: ZonePayload[]; events?: CoastEvent[]; ticks?: string[]; live?: boolean; rankedLive?: boolean }) {
+export function RiskMap({ zones, payloads, events = [], ticks, live = false, rankedLive = false, frameReady = true }: { zones: Zone[]; payloads: ZonePayload[]; events?: CoastEvent[]; ticks?: string[]; live?: boolean; rankedLive?: boolean; frameReady?: boolean }) {
   return (
     <Card className="flex h-full min-h-0 flex-col overflow-hidden">
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
@@ -53,7 +53,7 @@ export function RiskMap({ zones, payloads, events = [], ticks, live = false, ran
             <MapLegend live={live && !rankedLive} spill={!live} />
           </Map>
         </div>
-        {!live && ticks && ticks.length > 0 && <div data-tour="player"><TimeSlider ticks={ticks} bare /></div>}
+        {!live && ticks && ticks.length > 0 && <div data-tour="player"><TimeSlider ticks={ticks} bare frameReady={frameReady} /></div>}
       </CardContent>
     </Card>
   )

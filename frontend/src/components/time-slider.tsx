@@ -10,12 +10,17 @@ const TICK_MS = 1000
 
 /** `events` is optional: pages that already have an event picker (the dashboard) leave it out. */
 /** `bare` renders just the controls with no Card wrapper, for embedding in another card. */
-export function TimeSlider({ ticks, events, bare = false }: { ticks: string[]; events?: CoastEvent[]; bare?: boolean }) {
+/** `frameReady`: the step on screen has its own data (not the previous step's). Playback waits for it, so the slider
+ * never runs ahead of the map. */
+export function TimeSlider({ ticks, events, bare = false, frameReady = true }: { ticks: string[]; events?: CoastEvent[]; bare?: boolean; frameReady?: boolean }) {
   const { tick, playing, setTick, setPlaying, eventId, setEvent } = useReplayStore()
+  const ready = React.useRef(frameReady)
+  ready.current = frameReady
 
   React.useEffect(() => {
     if (!playing) return
     const id = setInterval(() => {
+      if (!ready.current) return // still loading this step: wait instead of skipping ahead
       const s = useReplayStore.getState()
       if (s.tick >= ticks.length - 1) s.setPlaying(false)
       else s.setTick(s.tick + 1)
@@ -34,7 +39,10 @@ export function TimeSlider({ ticks, events, bare = false }: { ticks: string[]; e
         onChange={(e) => setTick(+e.target.value)} className="flex-1 accent-primary" aria-label="Replay time"
       />
       <div className="text-sm tabular-nums">
-        <div className="font-medium">{now ? clock(now, true) : "..."}</div>
+        <div className="font-medium">
+          {now ? clock(now, true) : "..."}
+          {!frameReady && <span className="ml-2 text-xs font-normal text-muted-foreground animate-pulse">loading…</span>}
+        </div>
         {events && (
           <select
             value={eventId}

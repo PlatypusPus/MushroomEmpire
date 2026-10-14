@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query"
-import { useMemo } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo } from "react"
 
 import { DEFAULT_WEIGHTS, useReplayStore } from "@/state/replayStore"
 import { api, type SnapshotQuery, type Weights } from "./client"
@@ -33,10 +33,18 @@ export function useReplayData({ tunable = false }: { tunable?: boolean } = {}) {
   const ticks = replay.data?.ticks ?? []
   const payloads = useTick(eventId, ticks[tick], weights)
   const alerts = useAlertFeed(replay.data?.session_id, tick)
+  // load the next two steps while this one shows, so playback rarely waits on the backend
+  const qc = useQueryClient()
+  useEffect(() => {
+    for (const ts of [ticks[tick + 1], ticks[tick + 2]]) {
+      if (ts) qc.prefetchQuery({ queryKey: ["tick", eventId, ts, weights], queryFn: () => api.ranking({ event_id: eventId, issue_ts: ts, ...weights }) })
+    }
+  }, [qc, eventId, tick, ticks, weights])
   const names = useMemo(() => new Map((zones.data ?? []).map((z) => [z.id, z.name])), [zones.data])
   return {
     region, zones: zones.data ?? [], ticks, now: ticks[tick] as string | undefined, names,
     rows: payloads.data ?? [], feed: alerts.data ?? [],
+    frameReady: payloads.isSuccess && !payloads.isPlaceholderData, // false while the step on screen is still the previous one
     error: [regions, zones, replay, payloads].find((q) => q.error)?.error,
   }
 }

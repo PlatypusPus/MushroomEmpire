@@ -54,7 +54,7 @@ export default function Priority() {
         )}
         <div className="grid grid-cols-1 items-start gap-4 px-4 lg:px-6 @5xl/main:grid-cols-[3fr_2fr]">
           <div className="flex flex-col gap-4">
-            <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} live={live} rankedLive />
+            <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} live={live} rankedLive frameReady={replay.frameReady} />
             <ZonePanel zone={rows.find((p) => p.zone_id === selectedZone)} name={selectedZone ? names.get(selectedZone) : undefined} tunable />
           </div>
           <div className="flex flex-col gap-4">

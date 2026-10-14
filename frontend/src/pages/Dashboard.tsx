@@ -15,7 +15,7 @@ export default function Dashboard() {
   const live = useReplayStore((s) => s.mode) === "live"
   const events = useEvents()
   // fixed default weights here; tuning happens only on the Response priority page
-  const { region, zones, ticks, now, names, rows, feed, error } = useReplayData()
+  const { region, zones, ticks, now, names, rows, feed, error, frameReady } = useReplayData()
   useAlertToasts(live ? [] : feed, names, now) // the full feed lives on the Alerts page
   useFirstVisitTour()
 
@@ -51,7 +51,7 @@ export default function Dashboard() {
         )}
         <div className="grid grid-cols-1 items-stretch gap-4 px-4 lg:px-6 @5xl/main:h-[calc(100dvh-var(--header-height)-3rem)] @5xl/main:grid-cols-[2fr_1fr] @5xl/main:overflow-hidden">
           <div className="flex min-h-0 flex-col gap-4">
-            <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} live={live} />
+            <RiskMap zones={zones} payloads={rows} events={events.data ?? []} ticks={ticks} live={live} frameReady={frameReady} />
           </div>
           {live ? (
             <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
